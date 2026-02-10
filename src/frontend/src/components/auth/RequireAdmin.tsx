@@ -44,7 +44,7 @@ export default function RequireAdmin({ children }: RequireAdminProps) {
                   </div>
                   <CardTitle>Access Denied</CardTitle>
                   <CardDescription>
-                    You do not have permission to access this page. Administrator privileges are required.
+                    Admin access is restricted to the Internet Identity linked to the Google account <strong>grandzbee@gmail.com</strong>. Please sign in with the authorized Internet Identity to access this page.
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">

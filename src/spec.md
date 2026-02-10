@@ -1,15 +1,12 @@
 # Specification
 
 ## Summary
-**Goal:** Add a secure, admin-only product management module with full backend persistence, including product image upload/retrieval, and a protected Admin UI for CRUD operations.
+**Goal:** Make the Admin product management area visible in the app navigation while restricting access to a controller-managed allowlist of Internet Identity principals (intended for the Internet Identity linked to Google account grandzbee@gmail.com).
 
 **Planned changes:**
-- Add admin-only backend API endpoints for product create, update, delete, and admin listing with explicit authorization errors for non-admin callers.
-- Extend the persisted Product model to include name, description, price, category, and an image reference while keeping existing shop/cart reads compatible.
-- Implement backend image upload/replace (admin-only) plus image retrieval (public read) with validation (type/size) and clear not-found errors.
-- Create a protected frontend `/admin` route gated by authentication and admin authorization, with UI to list/add/edit/delete products and upload/preview images.
-- Ensure all Admin and shop catalog data is fetched from backend canister state and mutations persist; refresh UI via React Query invalidation/refetch after successful actions.
-- Add backend + frontend validation and clear English error handling for product fields and image uploads.
-- If needed, implement conditional state migration on canister upgrade so existing products remain accessible and new fields get sensible defaults.
+- Add a clearly visible “Admin” navigation entry that routes to `/admin` for all users, while keeping the `/admin` route protected by the existing admin guard.
+- Implement/extend backend admin authorization using an allowlist of Internet Identity principals, including a controller-only method to add an admin principal.
+- Enforce admin-only authorization on product management APIs (create/update/delete/listAll/uploadProductImage) so non-allowlisted principals receive an authorization error.
+- Update `/admin` access denied messaging to state that users must sign in with Internet Identity and that admin access is restricted to the Internet Identity linked to Google account grandzbee@gmail.com (no claims of Google OAuth login support).
 
-**User-visible outcome:** Administrators can sign in, visit `/admin`, and manage products (including uploading/replacing images) with changes persisted to the backend; shoppers see updated product data and stored images after successful admin updates.
+**User-visible outcome:** Everyone can see and click an “Admin” link; non-admins see an access denied screen with correct Internet Identity messaging, while the allowlisted admin can access and use the admin product management UI.

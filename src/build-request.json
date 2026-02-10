@@ -1,172 +1,76 @@
 {
   "kind": "build_request",
-  "title": "Secure Admin module for full product CRUD with image upload and database-backed UI",
+  "title": "Create visible Admin UI for product management and restrict access to grandzbee@gmail.com (via Internet Identity principal allowlist)",
   "priority": "normal",
   "requirements": [
     {
       "id": "REQ-1",
-      "text": "Add backend-admin-only API endpoints for full Product CRUD (create, update, delete, list) with robust authorization checks so only administrators can manage products.",
-      "target": "backend",
+      "text": "Make the admin area discoverable in the UI by adding a clearly visible navigation entry that routes to /admin, even when the current user is not an admin (the page must still be protected by the admin guard).",
+      "target": "frontend",
       "source": {
         "messageIds": [
-          "msg-1"
+          "msg-user-1"
         ],
         "quotes": [
-          "Create a secure Admin page with full CRUD functionality for products."
+          "Yes create the admin UI. The credentails should be Google account of grandzbee@gmail.com"
         ]
       },
       "acceptanceCriteria": [
-        "Non-admin callers attempting to create/update/delete products are rejected with an explicit authorization error (trap).",
-        "Admin callers can create a product and receive a stable product id.",
-        "Admin callers can update existing products and changes persist across subsequent reads.",
-        "Admin callers can delete products and deleted products no longer appear in listProducts or admin listing.",
-        "Backend exposes a dedicated admin listing method (e.g., listAllProductsAdmin) or reuses listProducts, but in all cases product data returned reflects persisted canister state."
+        "Top navigation includes an \"Admin\" entry that navigates to /admin.",
+        "If a non-admin user clicks \"Admin\", they are routed to /admin and shown an access denied screen (no admin content is rendered).",
+        "If an admin user clicks \"Admin\", they are routed to /admin and the admin product management UI is rendered."
       ]
     },
     {
       "id": "REQ-2",
-      "text": "Extend the Product data model to include the fields required by the Admin module: name, description, price, category, and image, while keeping compatibility with the existing shop/cart flows.",
+      "text": "Enforce admin access based on an allowlist of Internet Identity principals, and provide a backend mechanism for a canister controller to add the admin principal corresponding to the Internet Identity that is linked to Google account grandzbee@gmail.com.",
       "target": "backend",
       "source": {
         "messageIds": [
-          "msg-1"
+          "msg-user-1"
         ],
         "quotes": [
-          "Each product should support fields such as name, description, price, category, and image."
+          "The credentails should be Google account of grandzbee@gmail.com"
         ]
       },
       "acceptanceCriteria": [
-        "Product includes a persisted description field and it is returned in product queries.",
-        "Product includes a persisted price field usable by the UI (existing priceCents may be retained but must be consistent and validated).",
-        "Product includes a persisted category field as text as used by the current frontend filtering.",
-        "Product includes an image reference field suitable for both uploaded images and existing imageUrl-based products.",
-        "Existing non-admin product read APIs (listProducts/getProductById) continue to work and return complete product records without breaking existing pages."
+        "Backend exposes an admin-check function used by the frontend (e.g., the existing actor.isCallerAdmin() call used by useIsAdmin returns true only for allowlisted principals).",
+        "Backend provides a controller-only method to add an admin principal to the allowlist.",
+        "Once the principal for the Internet Identity linked to grandzbee@gmail.com is added to the allowlist, that identity is recognized as admin (admin check returns true) and can perform product CRUD.",
+        "Non-allowlisted principals cannot call admin-only product APIs (create/update/delete/listAll/uploadProductImage) and receive an authorization error."
       ]
     },
     {
       "id": "REQ-3",
-      "text": "Implement product image upload/update/storage/retrieval in the backend so an admin can attach or replace a product image and the UI can display the stored image.",
-      "target": "both",
-      "source": {
-        "messageIds": [
-          "msg-1"
-        ],
-        "quotes": [
-          "Implement image upload with proper storage and retrieval.",
-          "including the ability to upload and update product images."
-        ]
-      },
-      "acceptanceCriteria": [
-        "Backend provides an admin-only method to upload/replace a product image for a given product id (accepting image bytes and content type, with size/type validation).",
-        "Backend provides a read method to retrieve a product image (bytes + content type) for display by the frontend, and returns a clear not-found error when missing.",
-        "When an image is uploaded, the product’s image reference is updated so subsequent product reads reflect that an image exists.",
-        "Frontend Admin UI can select an image file, upload it, and then show a preview using the stored image retrieved from the backend.",
-        "Shop product cards display the stored image when present; otherwise they fall back to existing imageUrl and then existing local fallback logic."
-      ]
-    },
-    {
-      "id": "REQ-4",
-      "text": "Create a new Admin page/route (e.g., /admin) in the frontend that is protected by authentication and an admin authorization check, and provides a complete product management UI (list, add, edit, delete).",
+      "text": "Update user-facing admin-access messaging to reflect the actual authentication model: users must sign in with Internet Identity, and only the Internet Identity that is linked to Google account grandzbee@gmail.com is permitted as admin.",
       "target": "frontend",
       "source": {
         "messageIds": [
-          "msg-1"
+          "msg-user-1"
         ],
         "quotes": [
-          "Build an Admin module for the application that allows administrators to add, edit, delete, and manage products"
+          "The credentails should be Google account of grandzbee@gmail.com"
         ]
       },
       "acceptanceCriteria": [
-        "Navigating to /admin as an unauthenticated user shows the existing login-required experience (via RequireAuth).",
-        "Navigating to /admin as an authenticated non-admin shows an English access-denied message and does not expose product management controls.",
-        "Navigating to /admin as an admin shows a product table/list with actions to add, edit, and delete.",
-        "The Admin page includes a product form supporting name, description, price, category, and image selection/upload.",
-        "Delete action requires a confirmation step and removes the product from the list after success."
-      ]
-    },
-    {
-      "id": "REQ-5",
-      "text": "Ensure all product data shown in the Admin UI (and the shop catalog UI) is fetched from backend persistence and that all Admin mutations persist back to backend state; refresh UI state after successful transactions using React Query invalidation/refetch.",
-      "target": "both",
-      "source": {
-        "messageIds": [
-          "msg-1"
-        ],
-        "quotes": [
-          "Ensure the application is fully connected to a database.",
-          "All data displayed in the UI must be fetched from database tables.",
-          "Any changes made through the UI must be persisted back to the database.",
-          "Ensure the UI reflects database updates in real time or after successful transactions."
-        ]
-      },
-      "acceptanceCriteria": [
-        "Admin product list loads from backend queries only (no hard-coded product data in the Admin UI).",
-        "After create/update/delete/upload-image succeeds, relevant React Query caches are invalidated/refetched so the Admin list and Shop page reflect the latest persisted data without a manual page refresh.",
-        "If a backend call fails, the UI shows an English error message and does not optimistically show persisted changes.",
-        "Product reads/writes are performed through the generated backend actor (same pattern as existing hooks like useProducts/useCart)."
-      ]
-    },
-    {
-      "id": "REQ-6",
-      "text": "Add backend and frontend validation and error handling for product management to follow best practices (required fields, numeric ranges, category constraints, image file constraints) with clear English error messages.",
-      "target": "both",
-      "source": {
-        "messageIds": [
-          "msg-1"
-        ],
-        "quotes": [
-          "Follow best practices for data validation, error handling, and API design."
-        ]
-      },
-      "acceptanceCriteria": [
-        "Backend validates required product fields (e.g., non-empty name/category, non-negative price) and traps with clear messages on invalid input.",
-        "Backend validates image uploads (allowed content types and maximum size) and rejects invalid uploads.",
-        "Frontend validates form inputs before submission and displays field-level or form-level error messages in English.",
-        "All mutations surface backend errors to the user in a readable way and keep the form state consistent (no silent failures)."
-      ]
-    },
-    {
-      "id": "REQ-7",
-      "text": "If changing the persisted Product schema requires an upgrade, implement conditional state migration so existing deployed state upgrades safely to the new Product schema without data loss.",
-      "target": "backend",
-      "source": {
-        "messageIds": [
-          "msg-1"
-        ],
-        "quotes": [
-          "Ensure the application is fully connected to a database.",
-          "Structure the module so it is scalable and maintainable."
-        ]
-      },
-      "acceptanceCriteria": [
-        "On canister upgrade, existing products persist and remain accessible via listProducts/getProductById.",
-        "Any newly added Product fields (e.g., description / image reference) are populated with sensible defaults for existing products.",
-        "Migration runs conditionally (only when needed) and does not overwrite existing state on normal operation."
+        "The /admin access denied UI includes English text indicating that admin access is restricted to the Internet Identity linked to Google account grandzbee@gmail.com.",
+        "No UI claims that direct Google OAuth login is supported; wording references Internet Identity and linking to the specified Google account."
       ]
     }
   ],
   "constraints": [
-    "Backend must remain a single Motoko actor (all logic in backend/main.mo); add backend/migration.mo only if required for upgrade migration.",
-    "Do not edit frontend immutable paths: frontend/src/hooks/useInternetIdentity.ts, frontend/src/hooks/useInternetIdentity.tsx, frontend/src/hooks/useActor.ts, frontend/src/main.tsx, frontend/src/components/ui/*.",
-    "Use English for all user-facing text."
+    "Backend must remain a single Motoko actor in backend/main.mo (no additional backend services).",
+    "Do not modify any files under frontend/src/components/ui (compose existing UI components only).",
+    "Do not modify frontend immutable paths listed in SYSTEM_CONTEXT (e.g., frontend/src/hooks/useInternetIdentity.ts, frontend/src/hooks/useActor.ts, frontend/src/main.tsx).",
+    "Only Internet Identity authentication is supported; do not add Google OAuth or third-party authentication flows."
   ],
   "nonGoals": [
-    "Implementing third-party authentication providers (only Internet Identity is supported).",
-    "Adding external databases (e.g., PostgreSQL/MongoDB) or off-chain storage services; persistence must use Internet Computer canister state.",
-    "Implementing real-time updates via WebSockets; UI refresh via refetch/invalidations after successful transactions is sufficient."
+    "Implementing Google OAuth sign-in, reading email addresses from an identity provider, or any third-party auth integration.",
+    "Adding additional admin modules beyond product management CRUD (e.g., order management, user management) unless explicitly requested.",
+    "Real-time updates or websocket-based admin features."
   ],
   "imageRequirements": {
     "required": [],
     "edits": []
-  },
-  "userProfileUpdate": {
-    "goalsToAdd": [],
-    "goalsToRemove": [],
-    "preferencesToAdd": [],
-    "preferencesToRemove": [],
-    "miscToAdd": [],
-    "miscToRemove": [],
-    "fieldsToSet": {},
-    "fieldsToDelete": []
   }
 }

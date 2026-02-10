@@ -7,7 +7,6 @@ import LoginButton from '../auth/LoginButton';
 import { useInternetIdentity } from '../../hooks/useInternetIdentity';
 import { useCustomerProfile } from '../../hooks/useCustomer';
 import { useCart } from '../../hooks/useCart';
-import { useIsAdmin } from '../../hooks/useAdminProducts';
 import { navigate, isActiveRoute } from '../../router/navigation';
 import { usePathname } from '../../router/usePathname';
 
@@ -17,7 +16,6 @@ export default function TopNav() {
   const { identity } = useInternetIdentity();
   const { data: profile } = useCustomerProfile();
   const { data: cart } = useCart();
-  const { data: isAdmin } = useIsAdmin();
 
   const cartItemCount = cart?.items.reduce((sum, [, qty]) => sum + Number(qty), 0) || 0;
 
@@ -56,6 +54,7 @@ export default function TopNav() {
     { label: 'Shop', path: '/shop' },
     { label: 'Cart', path: '/cart' },
     { label: 'Orders', path: '/orders' },
+    { label: 'Admin', path: '/admin' },
   ];
 
   return (
@@ -95,18 +94,6 @@ export default function TopNav() {
                 )}
               </button>
             ))}
-            {isAdmin && (
-              <button
-                onClick={() => handleNavigate('/admin')}
-                className={`text-sm font-medium transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-lg px-4 py-2 ${
-                  isActiveRoute(pathname, '/admin')
-                    ? 'text-foreground bg-muted'
-                    : 'text-foreground/70 hover:text-foreground hover:bg-muted/50'
-                }`}
-              >
-                Admin
-              </button>
-            )}
             {pathname === '/' &&
               landingLinks.map((link) => (
                 <button
@@ -162,18 +149,6 @@ export default function TopNav() {
                   {link.path === '/cart' && cartItemCount > 0 && ` (${cartItemCount})`}
                 </button>
               ))}
-              {isAdmin && (
-                <button
-                  onClick={() => handleNavigate('/admin')}
-                  className={`text-base font-medium transition-all duration-200 text-left px-4 py-3 rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
-                    isActiveRoute(pathname, '/admin')
-                      ? 'text-foreground bg-muted'
-                      : 'text-foreground/70 hover:text-foreground hover:bg-muted/50'
-                  }`}
-                >
-                  Admin
-                </button>
-              )}
               {pathname === '/' &&
                 landingLinks.map((link) => (
                   <button

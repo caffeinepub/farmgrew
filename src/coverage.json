@@ -1,120 +1,55 @@
 {
   "kind": "coverage_report",
   "version": "1.0",
-  "generatedAt": "2026-02-10T11:26:53.676Z",
+  "generatedAt": "2026-02-10T16:20:40.418Z",
   "sources": {
     "buildRequest": true,
     "implementationPlan": true
   },
   "requirements": {
-    "total": 7,
-    "implemented": 4,
+    "total": 3,
+    "implemented": 2,
     "items": [
       {
         "id": "REQ-1",
-        "summary": "Add backend-admin-only API endpoints for full Product CRUD (create, update, delete, list) with robust authorization checks so only administrators can manage products.",
-        "status": "unknown",
-        "plannedFiles": [],
-        "matchedFiles": []
+        "summary": "Make the admin area discoverable in the UI by adding a clearly visible navigation entry that routes to /admin, even when the current user is not an admin (the page must still be protected by the admin guard).",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/components/landing/TopNav.tsx",
+          "frontend/src/App.tsx"
+        ],
+        "matchedFiles": [
+          "frontend/src/components/landing/TopNav.tsx"
+        ]
       },
       {
         "id": "REQ-2",
-        "summary": "Extend the Product data model to include the fields required by the Admin module: name, description, price, category, and image, while keeping compatibility with the existing shop/cart flows.",
+        "summary": "Enforce admin access based on an allowlist of Internet Identity principals, and provide a backend mechanism for a canister controller to add the admin principal corresponding to the Internet Identity that is linked to Google account grandzbee@gmail.com.",
         "status": "unknown",
         "plannedFiles": [],
         "matchedFiles": []
       },
       {
         "id": "REQ-3",
-        "summary": "Implement product image upload/update/storage/retrieval in the backend so an admin can attach or replace a product image and the UI can display the stored image.",
+        "summary": "Update user-facing admin-access messaging to reflect the actual authentication model: users must sign in with Internet Identity, and only the Internet Identity that is linked to Google account grandzbee@gmail.com is permitted as admin.",
         "status": "implemented",
         "plannedFiles": [
-          "frontend/src/components/shop/ProductCard.tsx",
-          "frontend/src/pages/AdminPage.tsx",
-          "frontend/src/hooks/useAdminProducts.ts"
+          "frontend/src/components/auth/RequireAdmin.tsx"
         ],
         "matchedFiles": [
-          "frontend/src/components/shop/ProductCard.tsx",
-          "frontend/src/pages/AdminPage.tsx",
-          "frontend/src/hooks/useAdminProducts.ts"
+          "frontend/src/components/auth/RequireAdmin.tsx"
         ]
-      },
-      {
-        "id": "REQ-4",
-        "summary": "Create a new Admin page/route (e.g., /admin) in the frontend that is protected by authentication and an admin authorization check, and provides a complete product management UI (list, add, edit, delete).",
-        "status": "implemented",
-        "plannedFiles": [
-          "frontend/src/App.tsx",
-          "frontend/src/components/auth/RequireAdmin.tsx",
-          "frontend/src/pages/AdminPage.tsx",
-          "frontend/src/components/landing/TopNav.tsx"
-        ],
-        "matchedFiles": [
-          "frontend/src/App.tsx",
-          "frontend/src/components/auth/RequireAdmin.tsx",
-          "frontend/src/pages/AdminPage.tsx",
-          "frontend/src/components/landing/TopNav.tsx"
-        ]
-      },
-      {
-        "id": "REQ-5",
-        "summary": "Ensure all product data shown in the Admin UI (and the shop catalog UI) is fetched from backend persistence and that all Admin mutations persist back to backend state; refresh UI state after successful transactions using React Query invalidation/refetch.",
-        "status": "implemented",
-        "plannedFiles": [
-          "frontend/src/hooks/useAdminProducts.ts",
-          "frontend/src/pages/AdminPage.tsx",
-          "frontend/src/hooks/useProducts.ts",
-          "frontend/src/pages/ShopPage.tsx"
-        ],
-        "matchedFiles": [
-          "frontend/src/hooks/useAdminProducts.ts",
-          "frontend/src/pages/AdminPage.tsx",
-          "frontend/src/pages/ShopPage.tsx"
-        ]
-      },
-      {
-        "id": "REQ-6",
-        "summary": "Add backend and frontend validation and error handling for product management to follow best practices (required fields, numeric ranges, category constraints, image file constraints) with clear English error messages.",
-        "status": "implemented",
-        "plannedFiles": [
-          "frontend/src/pages/AdminPage.tsx",
-          "frontend/src/hooks/useAdminProducts.ts"
-        ],
-        "matchedFiles": [
-          "frontend/src/pages/AdminPage.tsx",
-          "frontend/src/hooks/useAdminProducts.ts"
-        ]
-      },
-      {
-        "id": "REQ-7",
-        "summary": "If changing the persisted Product schema requires an upgrade, implement conditional state migration so existing deployed state upgrades safely to the new Product schema without data loss.",
-        "status": "unknown",
-        "plannedFiles": [],
-        "matchedFiles": []
       }
     ]
   },
   "changedFiles": [
-    "backend/blob-storage/Mixin.mo",
-    "backend/blob-storage/Storage.mo",
     "backend/main.mo",
-    "backend/migration.mo",
     "build-request.json",
-    "caffeine.lock.json",
     "feature_evidence.json",
     "frontend-file-summaries.txt",
     "frontend-implementation-plan.json",
-    "frontend/src/App.tsx",
-    "frontend/src/backend.d.ts",
-    "frontend/src/backend.ts",
     "frontend/src/components/auth/RequireAdmin.tsx",
     "frontend/src/components/landing/TopNav.tsx",
-    "frontend/src/components/shop/ProductCard.tsx",
-    "frontend/src/declarations/backend.did.d.ts",
-    "frontend/src/declarations/backend.did.js",
-    "frontend/src/hooks/useAdminProducts.ts",
-    "frontend/src/pages/AdminPage.tsx",
-    "frontend/src/pages/ShopPage.tsx",
     "project_state.json",
     "scratch/component-selection.json",
     "spec.md",

@@ -1,8 +1,8 @@
 {
   "frontend/src/App.tsx": "Main app component with QueryClient and InternetIdentity providers, implementing client-side routing for landing, shop, register, cart, orders, order details, and admin pages with authentication and admin authorization guards.",
   "frontend/src/sections/LandingPage.tsx": "Landing page composition assembling TopNav, Hero, and all landing sections with shared diet plan state coordination.",
-  "frontend/src/components/landing/TopNav.tsx": "Enhanced navigation header with Shop, Cart, Orders, and conditional Admin link (visible only to admins), user profile display, login button, and preserved landing page anchor scrolling.",
-  "frontend/src/components/landing/Hero.tsx": "Hero section with prominent \"Pure Vegetarian\" badge, updated copy emphasizing 100% vegetarian offerings, and updated hero illustration reference to v3 asset with gradient background and decorative elements.",
+  "frontend/src/components/landing/TopNav.tsx": "Enhanced navigation header with Shop, Cart, Orders, and Admin link (now always visible to all users), user profile display, login button, and preserved landing page anchor scrolling.",
+  "frontend/src/components/landing/Hero.tsx": "Hero section with prominent \"Pure Vegetarian\" badge, three CTA buttons including primary \"Shop Now\" button that navigates to /shop, \"Get Personalized Recommendations\" and \"Learn More\" buttons, updated hero illustration reference to v3 asset with gradient background and decorative elements.",
   "frontend/src/components/landing/Categories.tsx": "Product categories section displaying four category cards with updated v2 icon assets in a responsive grid (1/2/4 columns) and improved spacing.",
   "frontend/src/components/landing/CategoryCard.tsx": "Premium category card component using shadcn Card primitives with enhanced hover effects (elevation, scale, color transition), keyboard focus ring, and consistent card heights.",
   "frontend/src/components/landing/ServiceArea.tsx": "Service area section with enhanced card styling, improved spacing, and better visual hierarchy for Chennai operations and expansion messaging.",
@@ -35,7 +35,7 @@
   "frontend/src/pages/OrderDetailsPage.tsx": "Order details page displaying order items, quantities, prices, status, timestamp, and optional pickup time with order summary.",
   "frontend/src/components/shop/CategoryFilter.tsx": "Category filter component using shadcn Tabs for switching between product categories in the shop.",
   "frontend/src/components/shop/ProductCard.tsx": "Product card component displaying backend-stored image with three-tier fallback (backend ExternalBlob → local name-based resolver → SVG placeholder), name, category, description, pricing, and add-to-cart button with authentication check.",
-  "frontend/src/components/auth/RequireAdmin.tsx": "Admin authorization guard component that checks if the authenticated user has admin privileges via backend isCallerAdmin() and displays an access-denied message for non-admin users.",
+  "frontend/src/components/auth/RequireAdmin.tsx": "Admin authorization guard component that checks if the authenticated user has admin privileges via backend isCallerAdmin() and displays an access-denied message specifically mentioning that admin access is restricted to the Internet Identity linked to grandzbee@gmail.com.",
   "frontend/src/hooks/useAdminProducts.ts": "React Query hooks for admin operations including checking admin status, fetching all products, creating/updating/deleting products, and uploading product images with automatic cache invalidation.",
   "frontend/src/pages/AdminPage.tsx": "Admin product management page with full CRUD functionality including a product table, add/edit dialog with form validation, image upload with preview and progress tracking, and delete confirmation dialog."
 }

@@ -2,12 +2,30 @@
   "kind": "feature_evidence_report",
   "features": [
     {
-      "featureId": "feature-implement-product-image-upload-update-storage-retrieval-in-the-backend-so-an-admin-can-attach-or-replace-a-product-image-and-the-ui-can-display-the-stored-image",
-      "featureTitle": "Implement product image upload/update/storage/retrieval in the backend so an admin can attach or replace a product image and the UI can display the stored image.",
+      "featureId": "feature-make-the-admin-area-discoverable-in-the-ui-by-adding-a-clearly-visible-navigation-entry-that-routes-to-admin-even-when-the-current-user-is-not-an-admin-the-page-must-still-be-protected-by-the-admin-guard",
+      "featureTitle": "Make the admin area discoverable in the UI by adding a clearly visible navigation entry that routes to /admin, even when the current user is not an admin (the page must still be protected by the admin guard).",
       "files": [
-        "frontend/src/components/shop/ProductCard.tsx",
-        "frontend/src/hooks/useAdminProducts.ts",
-        "frontend/src/pages/AdminPage.tsx"
+        "frontend/src/components/landing/TopNav.tsx"
+      ],
+      "components": [
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "github-export-icp-cli@1.0.0",
+        "authorization@4.0.0",
+        "blob-storage@4.0.0"
+      ],
+      "testIds": [
+        "REQ-1"
+      ],
+      "confidence": "high"
+    },
+    {
+      "featureId": "feature-update-user-facing-admin-access-messaging-to-reflect-the-actual-authentication-model-users-must-sign-in-with-internet-identity-and-only-the-internet-identity-that-is-linked-to-google-account-grandzbee-gmail-com-is-permitted-as-admin",
+      "featureTitle": "Update user-facing admin-access messaging to reflect the actual authentication model: users must sign in with Internet Identity, and only the Internet Identity that is linked to Google account grandzbee@gmail.com is permitted as admin.",
+      "files": [
+        "frontend/src/components/auth/RequireAdmin.tsx"
       ],
       "components": [
         "core-infrastructure@1.0.2",
@@ -20,72 +38,6 @@
       ],
       "testIds": [
         "REQ-3"
-      ],
-      "confidence": "high"
-    },
-    {
-      "featureId": "feature-create-a-new-admin-page-route-e-g-admin-in-the-frontend-that-is-protected-by-authentication-and-an-admin-authorization-check-and-provides-a-complete-product-management-ui-list-add-edit-delete",
-      "featureTitle": "Create a new Admin page/route (e.g., /admin) in the frontend that is protected by authentication and an admin authorization check, and provides a complete product management UI (list, add, edit, delete).",
-      "files": [
-        "frontend/src/App.tsx",
-        "frontend/src/components/auth/RequireAdmin.tsx",
-        "frontend/src/components/landing/TopNav.tsx",
-        "frontend/src/pages/AdminPage.tsx"
-      ],
-      "components": [
-        "core-infrastructure@1.0.2",
-        "shadcn-ui@1.0.0",
-        "build-template-react@1.0.0",
-        "initial-app@1.0.0",
-        "github-export-icp-cli@1.0.0",
-        "authorization@4.0.0",
-        "blob-storage@4.0.0"
-      ],
-      "testIds": [
-        "REQ-4"
-      ],
-      "confidence": "high"
-    },
-    {
-      "featureId": "feature-ensure-all-product-data-shown-in-the-admin-ui-and-the-shop-catalog-ui-is-fetched-from-backend-persistence-and-that-all-admin-mutations-persist-back-to-backend-state-refresh-ui-state-after-successful-transactions-using-react-query-invalidation-refetch",
-      "featureTitle": "Ensure all product data shown in the Admin UI (and the shop catalog UI) is fetched from backend persistence and that all Admin mutations persist back to backend state; refresh UI state after successful transactions using React Query invalidation/refetch.",
-      "files": [
-        "frontend/src/hooks/useAdminProducts.ts",
-        "frontend/src/pages/AdminPage.tsx",
-        "frontend/src/pages/ShopPage.tsx"
-      ],
-      "components": [
-        "core-infrastructure@1.0.2",
-        "shadcn-ui@1.0.0",
-        "build-template-react@1.0.0",
-        "initial-app@1.0.0",
-        "github-export-icp-cli@1.0.0",
-        "authorization@4.0.0",
-        "blob-storage@4.0.0"
-      ],
-      "testIds": [
-        "REQ-5"
-      ],
-      "confidence": "high"
-    },
-    {
-      "featureId": "feature-add-backend-and-frontend-validation-and-error-handling-for-product-management-to-follow-best-practices-required-fields-numeric-ranges-category-constraints-image-file-constraints-with-clear-english-error-messages",
-      "featureTitle": "Add backend and frontend validation and error handling for product management to follow best practices (required fields, numeric ranges, category constraints, image file constraints) with clear English error messages.",
-      "files": [
-        "frontend/src/hooks/useAdminProducts.ts",
-        "frontend/src/pages/AdminPage.tsx"
-      ],
-      "components": [
-        "core-infrastructure@1.0.2",
-        "shadcn-ui@1.0.0",
-        "build-template-react@1.0.0",
-        "initial-app@1.0.0",
-        "github-export-icp-cli@1.0.0",
-        "authorization@4.0.0",
-        "blob-storage@4.0.0"
-      ],
-      "testIds": [
-        "REQ-6"
       ],
       "confidence": "high"
     }

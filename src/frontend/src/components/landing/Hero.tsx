@@ -1,6 +1,7 @@
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import Container from '../layout/Container';
+import { navigate } from '@/router/navigation';
 
 export default function Hero() {
   const scrollToRecommendations = () => {
@@ -15,6 +16,10 @@ export default function Hero() {
     if (element) {
       element.scrollIntoView({ behavior: 'smooth' });
     }
+  };
+
+  const handleShopNow = () => {
+    navigate('/shop');
   };
 
   return (
@@ -45,6 +50,14 @@ export default function Hero() {
               <Button
                 size="lg"
                 className="text-base md:text-lg px-8 py-6 shadow-soft-lg hover:shadow-glow-green transition-all duration-300"
+                onClick={handleShopNow}
+              >
+                Shop Now
+              </Button>
+              <Button
+                size="lg"
+                variant="outline"
+                className="text-base md:text-lg px-8 py-6 shadow-soft hover:shadow-soft-lg transition-all duration-300"
                 onClick={scrollToRecommendations}
               >
                 Get Personalized Recommendations
