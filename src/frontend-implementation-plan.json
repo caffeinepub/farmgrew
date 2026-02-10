@@ -1,0 +1,117 @@
+{
+  "kind": "implementation_plan",
+  "version": "1.0",
+  "title": "Admin product CRUD UI with protected routing, image upload, and React Query persistence wiring",
+  "requirements": [
+    {
+      "id": "REQ-3",
+      "summary": "Support admin image select/upload/replace and display stored product images in both Admin UI and Shop cards with correct fallback behavior",
+      "acceptanceCriteria": [
+        "Frontend Admin UI can select an image file, upload it, and then show a preview using the stored image retrieved from the backend.",
+        "Shop product cards display the stored image when present; otherwise they fall back to existing imageUrl and then existing local fallback logic."
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/components/shop/ProductCard.tsx",
+          "operation": "modify",
+          "description": "Update product image rendering to use the persisted backend image when present (Product.image: ExternalBlob -> getDirectURL()), and fall back to existing local name-based resolver and SVG placeholder when missing/errored; remove reliance on non-existent legacy fields (e.g., product.imageUrl). Use the blob-storage ExternalBlob capability for rendering direct URLs. Verify the component's usage instructions before implementing."
+        },
+        {
+          "path": "frontend/src/pages/AdminPage.tsx",
+          "operation": "create",
+          "description": "Create an Admin product management page that includes image file selection, upload/replace action using backend uploadProductImage, and a preview that displays the stored image via ExternalBlob.getDirectURL() (prefer product.image when returned; otherwise fetch via getProductImage). Use shadcn-ui components (forms, dialogs, table, buttons) to build the UI. Verify the component's usage instructions before implementing."
+        },
+        {
+          "path": "frontend/src/hooks/useAdminProducts.ts",
+          "operation": "create",
+          "description": "Add React Query hooks/mutations for admin image upload (convert File -> bytes -> ExternalBlob.fromBytes(...).withUploadProgress when desired) and for reading image presence (product.image and/or getProductImage). Use blob-storage ExternalBlob for upload and display flows. Verify the component's usage instructions before implementing."
+        }
+      ]
+    },
+    {
+      "id": "REQ-4",
+      "summary": "Add a protected /admin route with auth + admin authorization gating and a complete product management UI (list/add/edit/delete) including image selection/upload",
+      "acceptanceCriteria": [
+        "Navigating to /admin as an unauthenticated user shows the existing login-required experience (via RequireAuth).",
+        "Navigating to /admin as an authenticated non-admin shows an English access-denied message and does not expose product management controls.",
+        "Navigating to /admin as an admin shows a product table/list with actions to add, edit, and delete.",
+        "The Admin page includes a product form supporting name, description, price, category, and image selection/upload.",
+        "Delete action requires a confirmation step and removes the product from the list after success."
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/App.tsx",
+          "operation": "modify",
+          "description": "Wire the new /admin route into the router and wrap it in RequireAuth plus a new admin-only guard so unauthenticated users see the existing RequireAuth flow and authenticated non-admin users see an English access-denied screen."
+        },
+        {
+          "path": "frontend/src/components/auth/RequireAdmin.tsx",
+          "operation": "create",
+          "description": "Create an admin authorization guard that calls backend isCallerAdmin()/getCallerUserRole via the generated actor and renders an English access-denied message when unauthorized; use the authorization system’s role-based access control semantics. Verify the component's usage instructions before implementing."
+        },
+        {
+          "path": "frontend/src/pages/AdminPage.tsx",
+          "operation": "modify",
+          "description": "Implement the Admin UI: persisted product list view, add/edit form, delete confirmation dialog, and image select/upload controls. Use shadcn-ui components to match the existing design system. Verify the component's usage instructions before implementing."
+        },
+        {
+          "path": "frontend/src/components/landing/TopNav.tsx",
+          "operation": "modify",
+          "description": "Add an Admin navigation link (e.g., 'Admin') that is conditionally visible only when the current caller is an admin (via a lightweight React Query check using the generated actor). Ensure this wiring does not expose admin controls to non-admin users."
+        }
+      ]
+    },
+    {
+      "id": "REQ-5",
+      "summary": "Ensure Admin and Shop UIs fetch persisted product data from the backend actor and persist all admin mutations; use React Query invalidation/refetch to refresh after successful operations",
+      "acceptanceCriteria": [
+        "Admin product list loads from backend queries only (no hard-coded product data in the Admin UI).",
+        "After create/update/delete/upload-image succeeds, relevant React Query caches are invalidated/refetched so the Admin list and Shop page reflect the latest persisted data without a manual page refresh.",
+        "If a backend call fails, the UI shows an English error message and does not optimistically show persisted changes.",
+        "Product reads/writes are performed through the generated backend actor (same pattern as existing hooks like useProducts/useCart)."
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/hooks/useAdminProducts.ts",
+          "operation": "create",
+          "description": "Create admin-focused React Query hooks/mutations for listAllProducts, createProduct, updateProduct, deleteProduct, and uploadProductImage using the generated backend actor; on success invalidate/refetch relevant query keys (e.g., ['products', ...], admin list keys, and individual product/image keys) so ShopPage and AdminPage stay consistent."
+        },
+        {
+          "path": "frontend/src/pages/AdminPage.tsx",
+          "operation": "modify",
+          "description": "Use the new admin hooks so all product data is loaded from backend persistence and all admin mutations persist via the actor; show English loading and error states; trigger React Query invalidation/refetch after successful create/update/delete/upload-image."
+        },
+        {
+          "path": "frontend/src/hooks/useProducts.ts",
+          "operation": "modify",
+          "description": "Ensure product queries remain fully backend-backed and align query keys with admin invalidation strategy (so ShopPage updates after admin changes without manual refresh)."
+        },
+        {
+          "path": "frontend/src/pages/ShopPage.tsx",
+          "operation": "modify",
+          "description": "Keep Shop catalog backed by useProducts and ensure it properly re-renders updated product records/images after React Query invalidations triggered by Admin mutations."
+        }
+      ]
+    },
+    {
+      "id": "REQ-6",
+      "summary": "Add frontend validation and clear English error handling for product management (required fields, numeric ranges, category constraints, image constraints) and surface backend errors clearly",
+      "acceptanceCriteria": [
+        "Frontend validates form inputs before submission and displays field-level or form-level error messages in English.",
+        "All mutations surface backend errors to the user in a readable way and keep the form state consistent (no silent failures)."
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/pages/AdminPage.tsx",
+          "operation": "modify",
+          "description": "Add client-side validation for name/description/category/price and image file constraints (type + max size), show field-level/form-level English messages, and ensure mutation errors from the backend are displayed clearly without applying optimistic UI changes."
+        },
+        {
+          "path": "frontend/src/hooks/useAdminProducts.ts",
+          "operation": "modify",
+          "description": "Normalize/surface backend error messages (including authorization traps and validation errors) into readable English UI errors for all admin mutations; keep mutation state consistent on failures."
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,106 @@
+{
+  "schemaVersion": "1.0.0",
+  "projectStateVersion": 3,
+  "summary": "Build a secure Admin module for managing products with full CRUD, product image upload/storage, and a fully database-backed UI where all reads/writes persist to DB with validation and robust API design.",
+  "architectural_notes": [
+    "Admin area must be secured (authentication/authorization) and separated from public UI.",
+    "All product data displayed in UI must be sourced from database queries; all mutations persist to DB via API/service layer.",
+    "Product images require an upload pipeline (storage + URL/reference saved with product record) and retrieval for display.",
+    "CRUD operations should include validation and error handling with clear API contracts for maintainability."
+  ],
+  "known_issues": [],
+  "isFixRequest": false,
+  "existing_features": [
+    {
+      "id": "feature-implement-product-image-upload-update-storage-retrieval-in-the-backend-so-an-admin-can-attach-or-replace-a-product-image-and-the-ui-can-display-the-stored-image",
+      "title": "Implement product image upload/update/storage/retrieval in the backend so an admin can attach or replace a product image and the UI can display the stored image.",
+      "reqIds": [
+        "REQ-3"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-create-a-new-admin-page-route-e-g-admin-in-the-frontend-that-is-protected-by-authentication-and-an-admin-authorization-check-and-provides-a-complete-product-management-ui-list-add-edit-delete",
+      "title": "Create a new Admin page/route (e.g., /admin) in the frontend that is protected by authentication and an admin authorization check, and provides a complete product management UI (list, add, edit, delete).",
+      "reqIds": [
+        "REQ-4"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-ensure-all-product-data-shown-in-the-admin-ui-and-the-shop-catalog-ui-is-fetched-from-backend-persistence-and-that-all-admin-mutations-persist-back-to-backend-state-refresh-ui-state-after-successful-transactions-using-react-query-invalidation-refetch",
+      "title": "Ensure all product data shown in the Admin UI (and the shop catalog UI) is fetched from backend persistence and that all Admin mutations persist back to backend state; refresh UI state after successful transactions using React Query invalidation/refetch.",
+      "reqIds": [
+        "REQ-5"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-add-backend-and-frontend-validation-and-error-handling-for-product-management-to-follow-best-practices-required-fields-numeric-ranges-category-constraints-image-file-constraints-with-clear-english-error-messages",
+      "title": "Add backend and frontend validation and error handling for product management to follow best practices (required fields, numeric ranges, category constraints, image file constraints) with clear English error messages.",
+      "reqIds": [
+        "REQ-6"
+      ],
+      "version": 1
+    }
+  ],
+  "new_feature_requests": [
+    {
+      "id": "AR-1",
+      "summary": "Secure Admin module/page for product management with full CRUD (add/edit/delete)",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-2",
+      "summary": "Product model supports name, description, price, category, and image fields persisted in database tables",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-3",
+      "summary": "Image upload/update for products with proper storage and retrieval integrated with product records",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-4",
+      "summary": "Ensure application is fully connected to a database; UI fetches from DB and persists updates back to DB",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-5",
+      "summary": "Apply best practices: data validation, error handling, and scalable/maintainable API/module structure; UI updates after successful transactions (real-time or refresh)",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-6",
+      "summary": "Add backend-admin-only API endpoints for full Product CRUD (create, update, delete, list) with robust authorization checks so only administrators can manage products.",
+      "reqIds": [
+        "REQ-1"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-7",
+      "summary": "Extend the Product data model to include the fields required by the Admin module: name, description, price, category, and image, while keeping compatibility with the existing shop/cart flows.",
+      "reqIds": [
+        "REQ-2"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-12",
+      "summary": "If changing the persisted Product schema requires an upgrade, implement conditional state migration so existing deployed state upgrades safely to the new Product schema without data loss.",
+      "reqIds": [
+        "REQ-7"
+      ],
+      "status": "pending"
+    }
+  ],
+  "projectName": "Secure Admin module for full product CRUD with image upload and database-backed UI",
+  "clarification_mode": "instant",
+  "clarification_rounds": 0
+}

@@ -1,0 +1,193 @@
+import { useOrderById } from '../hooks/useOrders';
+import { useProducts } from '../hooks/useProducts';
+import { navigate } from '../router/navigation';
+import TopNav from '../components/landing/TopNav';
+import Footer from '../components/landing/Footer';
+import Container from '../components/layout/Container';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
+import { Loader2, ArrowLeft } from 'lucide-react';
+import { OrderStatus } from '../backend';
+import { getProductImageUrl, getProductImageFallback } from '../lib/productImage';
+
+const STATUS_COLORS: Record<OrderStatus, string> = {
+  [OrderStatus.pending]: 'bg-yellow-500/10 text-yellow-700 dark:text-yellow-400',
+  [OrderStatus.confirmed]: 'bg-blue-500/10 text-blue-700 dark:text-blue-400',
+  [OrderStatus.completed]: 'bg-green-500/10 text-green-700 dark:text-green-400',
+  [OrderStatus.expired]: 'bg-gray-500/10 text-gray-700 dark:text-gray-400',
+  [OrderStatus.canceled]: 'bg-red-500/10 text-red-700 dark:text-red-400',
+};
+
+interface OrderDetailsPageProps {
+  orderId: string;
+}
+
+export default function OrderDetailsPage({ orderId }: OrderDetailsPageProps) {
+  const { data: order, isLoading } = useOrderById(orderId);
+  const { data: allProducts } = useProducts();
+
+  const getProductDetails = (productId: bigint) => {
+    return allProducts?.find((p) => p.id === productId);
+  };
+
+  const formatDate = (timestamp: bigint) => {
+    const date = new Date(Number(timestamp) / 1_000_000);
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex flex-col">
+        <TopNav />
+        <main className="flex-1 flex items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </main>
+        <Footer />
+      </div>
+    );
+  }
+
+  if (!order) {
+    return (
+      <div className="min-h-screen flex flex-col">
+        <TopNav />
+        <main className="flex-1 section-spacing-sm">
+          <Container>
+            <Card>
+              <CardContent className="py-12 text-center">
+                <h2 className="text-2xl font-semibold mb-2">Order Not Found</h2>
+                <p className="text-muted-foreground mb-6">
+                  The order you're looking for doesn't exist or you don't have access to it.
+                </p>
+                <Button onClick={() => navigate('/orders')}>Back to Orders</Button>
+              </CardContent>
+            </Card>
+          </Container>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen flex flex-col">
+      <TopNav />
+      <main className="flex-1 section-spacing-sm">
+        <Container>
+          <Button
+            variant="ghost"
+            onClick={() => navigate('/orders')}
+            className="mb-6"
+          >
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back to Orders
+          </Button>
+
+          <div className="grid lg:grid-cols-3 gap-8">
+            <div className="lg:col-span-2 space-y-6">
+              <Card>
+                <CardHeader>
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <CardTitle className="text-2xl">Order #{order.id.toString()}</CardTitle>
+                      <p className="text-muted-foreground mt-2">
+                        Placed on {formatDate(order.timestamp)}
+                      </p>
+                    </div>
+                    <Badge className={STATUS_COLORS[order.status]}>
+                      {order.status}
+                    </Badge>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <h3 className="font-semibold mb-4">Order Items</h3>
+                  <div className="space-y-4">
+                    {order.items.map(([productId, quantity]) => {
+                      const product = getProductDetails(productId);
+                      if (!product) return null;
+
+                      return (
+                        <div key={productId.toString()} className="flex gap-4">
+                          <img
+                            src={getProductImageUrl(product.name)}
+                            alt={product.name}
+                            className="w-20 h-20 object-cover rounded-lg"
+                            onError={(e) => {
+                              e.currentTarget.src = getProductImageFallback();
+                            }}
+                          />
+                          <div className="flex-1">
+                            <h4 className="font-semibold">{product.name}</h4>
+                            <p className="text-sm text-muted-foreground">{product.category}</p>
+                            <p className="text-sm text-muted-foreground mt-1">
+                              Quantity: {Number(quantity)}
+                            </p>
+                          </div>
+                          <div className="text-right">
+                            <p className="font-semibold">
+                              ₹{((Number(product.priceCents) * Number(quantity)) / 100).toFixed(2)}
+                            </p>
+                            <p className="text-sm text-muted-foreground">
+                              ₹{(Number(product.priceCents) / 100).toFixed(2)} each
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            <div>
+              <Card className="sticky top-24">
+                <CardHeader>
+                  <CardTitle>Order Summary</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Subtotal</span>
+                      <span>₹{(Number(order.totalPriceCents) / 100).toFixed(2)}</span>
+                    </div>
+                    <Separator />
+                    <div className="flex justify-between font-semibold text-lg">
+                      <span>Total</span>
+                      <span>₹{(Number(order.totalPriceCents) / 100).toFixed(2)}</span>
+                    </div>
+                  </div>
+
+                  {order.pickupTime && (
+                    <div className="pt-4 border-t">
+                      <p className="text-sm font-medium mb-1">Pickup Time</p>
+                      <p className="text-sm text-muted-foreground">
+                        {formatDate(order.pickupTime)}
+                      </p>
+                    </div>
+                  )}
+
+                  <Button
+                    onClick={() => navigate('/shop')}
+                    variant="outline"
+                    className="w-full"
+                  >
+                    Continue Shopping
+                  </Button>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        </Container>
+      </main>
+      <Footer />
+    </div>
+  );
+}
