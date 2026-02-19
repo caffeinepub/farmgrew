@@ -54,3 +54,19 @@ export function usePlaceOrder() {
     },
   });
 }
+
+export function useSetOrderPaid() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (params: { orderId: bigint; sessionId: string; amountCents: bigint }) => {
+      if (!actor) throw new Error('Actor not available');
+      await actor.setOrderPaid(params.orderId, params.sessionId, params.amountCents);
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['order', variables.orderId.toString()] });
+      queryClient.invalidateQueries({ queryKey: ['orders'] });
+    },
+  });
+}

@@ -5,10 +5,10 @@ import type { Product, ExternalBlob } from '../backend';
 export function useIsAdmin() {
   const { actor, isFetching: actorFetching } = useActor();
 
-  return useQuery<boolean>({
+  const query = useQuery<boolean>({
     queryKey: ['isAdmin'],
     queryFn: async () => {
-      if (!actor) return false;
+      if (!actor) throw new Error('Actor not available');
       try {
         return await actor.isCallerAdmin();
       } catch (error) {
@@ -19,6 +19,13 @@ export function useIsAdmin() {
     enabled: !!actor && !actorFetching,
     retry: false,
   });
+
+  // Return custom state that properly reflects actor dependency
+  return {
+    ...query,
+    isLoading: actorFetching || query.isLoading,
+    isFetched: !!actor && query.isFetched,
+  };
 }
 
 export function useAllProducts() {

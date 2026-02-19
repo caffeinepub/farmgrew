@@ -8,6 +8,8 @@ import CartPage from './pages/CartPage';
 import OrdersPage from './pages/OrdersPage';
 import OrderDetailsPage from './pages/OrderDetailsPage';
 import AdminPage from './pages/AdminPage';
+import PaymentSuccessPage from './pages/PaymentSuccessPage';
+import PaymentFailurePage from './pages/PaymentFailurePage';
 import RequireAuth from './components/auth/RequireAuth';
 import RequireRegistration from './components/auth/RequireRegistration';
 import RequireAdmin from './components/auth/RequireAdmin';
@@ -65,6 +67,26 @@ function AppRouter() {
       <RequireAuth>
         <RequireRegistration>
           <OrderDetailsPage orderId={orderId} />
+        </RequireRegistration>
+      </RequireAuth>
+    );
+  }
+
+  if (pathname === '/payment-success') {
+    return (
+      <RequireAuth>
+        <RequireRegistration>
+          <PaymentSuccessPage />
+        </RequireRegistration>
+      </RequireAuth>
+    );
+  }
+
+  if (pathname === '/payment-failure') {
+    return (
+      <RequireAuth>
+        <RequireRegistration>
+          <PaymentFailurePage />
         </RequireRegistration>
       </RequireAuth>
     );

@@ -6,8 +6,8 @@ import Container from '../components/layout/Container';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Package, ChevronRight } from 'lucide-react';
-import { OrderStatus } from '../backend';
+import { Loader2, Package, ChevronRight, AlertCircle, CheckCircle2, Clock } from 'lucide-react';
+import { OrderStatus, type Order } from '../backend';
 
 const STATUS_COLORS: Record<OrderStatus, string> = {
   [OrderStatus.pending]: 'bg-yellow-500/10 text-yellow-700 dark:text-yellow-400',
@@ -31,6 +31,26 @@ export default function OrdersPage() {
     });
   };
 
+  const getPaymentStatusIcon = (order: Order) => {
+    if (order.paymentStatus.__kind__ === 'completed') {
+      return <CheckCircle2 className="h-4 w-4 text-green-600" />;
+    }
+    if (order.paymentStatus.__kind__ === 'failed') {
+      return <AlertCircle className="h-4 w-4 text-red-600" />;
+    }
+    return <Clock className="h-4 w-4 text-yellow-600" />;
+  };
+
+  const getPaymentStatusText = (order: Order) => {
+    if (order.paymentStatus.__kind__ === 'completed') {
+      return 'Paid';
+    }
+    if (order.paymentStatus.__kind__ === 'failed') {
+      return 'Payment Failed';
+    }
+    return 'Payment Pending';
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex flex-col">
@@ -48,7 +68,12 @@ export default function OrdersPage() {
       <TopNav />
       <main className="flex-1 section-spacing-sm">
         <Container>
-          <h1 className="text-4xl font-bold mb-8">My Orders</h1>
+          <div className="mb-8">
+            <h1 className="text-4xl font-bold mb-2">My Orders</h1>
+            <p className="text-muted-foreground">
+              View and track your order history
+            </p>
+          </div>
 
           {!orders || orders.length === 0 ? (
             <Card>
@@ -72,14 +97,24 @@ export default function OrdersPage() {
                   <CardHeader>
                     <div className="flex items-start justify-between">
                       <div>
-                        <CardTitle className="text-lg">Order #{order.id.toString()}</CardTitle>
+                        <CardTitle className="text-xl">
+                          Order #{order.id.toString()}
+                        </CardTitle>
                         <p className="text-sm text-muted-foreground mt-1">
                           {formatDate(order.timestamp)}
                         </p>
                       </div>
-                      <Badge className={STATUS_COLORS[order.status]}>
-                        {order.status}
-                      </Badge>
+                      <div className="flex flex-col items-end gap-2">
+                        <Badge className={STATUS_COLORS[order.status]}>
+                          {order.status}
+                        </Badge>
+                        <div className="flex items-center gap-1 text-sm">
+                          {getPaymentStatusIcon(order)}
+                          <span className="text-muted-foreground">
+                            {getPaymentStatusText(order)}
+                          </span>
+                        </div>
+                      </div>
                     </div>
                   </CardHeader>
                   <CardContent>
@@ -88,11 +123,14 @@ export default function OrdersPage() {
                         <p className="text-sm text-muted-foreground">
                           {order.items.length} item{order.items.length !== 1 ? 's' : ''}
                         </p>
-                        <p className="font-semibold text-lg mt-1">
+                        <p className="text-lg font-semibold mt-1">
                           ₹{(Number(order.totalPriceCents) / 100).toFixed(2)}
                         </p>
                       </div>
-                      <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                      <Button variant="ghost" size="sm">
+                        View Details
+                        <ChevronRight className="ml-2 h-4 w-4" />
+                      </Button>
                     </div>
                   </CardContent>
                 </Card>

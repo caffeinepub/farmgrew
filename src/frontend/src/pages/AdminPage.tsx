@@ -1,9 +1,13 @@
 import { useState } from 'react';
 import { useAllProducts, useCreateProduct, useUpdateProduct, useDeleteProduct } from '../hooks/useAdminProducts';
-import { ExternalBlob } from '../backend';
+import { useIsStripeConfigured, useSetStripeConfiguration } from '../hooks/useStripe';
+import { ExternalBlob, type StripeConfiguration } from '../backend';
 import TopNav from '../components/landing/TopNav';
 import Footer from '../components/landing/Footer';
 import Container from '../components/layout/Container';
+import AdminManagement from '../components/admin/AdminManagement';
+import AdminCredentialsRotation from '../components/admin/AdminCredentialsRotation';
+import AdminResetCard from '../components/admin/AdminResetCard';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -42,7 +46,9 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, Plus, Pencil, Trash2, Upload, Image as ImageIcon } from 'lucide-react';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Loader2, Plus, Pencil, Trash2, Image as ImageIcon, CreditCard, AlertCircle } from 'lucide-react';
+import { toast } from 'sonner';
 import type { Product } from '../backend';
 
 const CATEGORIES = [
@@ -61,17 +67,31 @@ interface ProductFormData {
   imageFile: File | null;
 }
 
+interface StripeFormData {
+  secretKey: string;
+  allowedCountries: string;
+}
+
 export default function AdminPage() {
   const { data: products, isLoading, error } = useAllProducts();
+  const { data: isStripeConfigured, isLoading: stripeConfigLoading } = useIsStripeConfigured();
   const createProduct = useCreateProduct();
   const updateProduct = useUpdateProduct();
   const deleteProduct = useDeleteProduct();
+  const setStripeConfiguration = useSetStripeConfiguration();
 
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [deleteConfirmProduct, setDeleteConfirmProduct] = useState<Product | null>(null);
   const [uploadProgress, setUploadProgress] = useState<number>(0);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+
+  const [isStripeFormOpen, setIsStripeFormOpen] = useState(false);
+  const [stripeFormData, setStripeFormData] = useState<StripeFormData>({
+    secretKey: '',
+    allowedCountries: 'IN',
+  });
+  const [stripeFormErrors, setStripeFormErrors] = useState<Partial<Record<keyof StripeFormData, string>>>({});
 
   const [formData, setFormData] = useState<ProductFormData>({
     name: '',
@@ -114,7 +134,6 @@ export default function AdminPage() {
     setFormErrors({});
     setUploadProgress(0);
     
-    // Show existing image if available
     if (product.image) {
       setImagePreview(product.image.getDirectURL());
     } else {
@@ -128,13 +147,11 @@ export default function AdminPage() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Validate file type
     if (!file.type.startsWith('image/')) {
       setFormErrors({ ...formErrors, imageFile: 'Please select a valid image file' });
       return;
     }
 
-    // Validate file size (max 5MB)
     if (file.size > 5 * 1024 * 1024) {
       setFormErrors({ ...formErrors, imageFile: 'Image size must be less than 5MB' });
       return;
@@ -143,7 +160,6 @@ export default function AdminPage() {
     setFormData({ ...formData, imageFile: file });
     setFormErrors({ ...formErrors, imageFile: undefined });
 
-    // Create preview
     const reader = new FileReader();
     reader.onloadend = () => {
       setImagePreview(reader.result as string);
@@ -183,7 +199,6 @@ export default function AdminPage() {
       
       let imageBlob: ExternalBlob | null = null;
       
-      // Handle image upload if a new file is selected
       if (formData.imageFile) {
         const arrayBuffer = await formData.imageFile.arrayBuffer();
         const bytes = new Uint8Array(arrayBuffer);
@@ -191,7 +206,6 @@ export default function AdminPage() {
           setUploadProgress(percentage);
         });
       } else if (editingProduct?.image) {
-        // Keep existing image if editing and no new file selected
         imageBlob = editingProduct.image;
       }
 
@@ -204,6 +218,7 @@ export default function AdminPage() {
           category: formData.category,
           image: imageBlob,
         });
+        toast.success('Product updated successfully');
       } else {
         await createProduct.mutateAsync({
           name: formData.name,
@@ -212,80 +227,180 @@ export default function AdminPage() {
           category: formData.category,
           image: imageBlob,
         });
+        toast.success('Product created successfully');
       }
 
       setIsFormOpen(false);
       resetForm();
     } catch (error: any) {
-      alert(error.message || 'Failed to save product');
+      toast.error(error.message || 'Failed to save product');
     }
   };
 
-  const handleDelete = async () => {
+  const handleDeleteClick = (product: Product) => {
+    setDeleteConfirmProduct(product);
+  };
+
+  const handleDeleteConfirm = async () => {
     if (!deleteConfirmProduct) return;
 
     try {
       await deleteProduct.mutateAsync(deleteConfirmProduct.id);
+      toast.success('Product deleted successfully');
       setDeleteConfirmProduct(null);
     } catch (error: any) {
-      alert(error.message || 'Failed to delete product');
+      toast.error(error.message || 'Failed to delete product');
     }
   };
 
-  const isSaving = createProduct.isPending || updateProduct.isPending;
+  const handleDeleteCancel = () => {
+    setDeleteConfirmProduct(null);
+  };
+
+  const validateStripeForm = (): boolean => {
+    const errors: Partial<Record<keyof StripeFormData, string>> = {};
+
+    if (!stripeFormData.secretKey.trim()) {
+      errors.secretKey = 'Stripe secret key is required';
+    }
+
+    if (!stripeFormData.allowedCountries.trim()) {
+      errors.allowedCountries = 'At least one country code is required';
+    }
+
+    setStripeFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  const handleStripeSubmit = async () => {
+    if (!validateStripeForm()) return;
+
+    try {
+      const countries = stripeFormData.allowedCountries
+        .split(',')
+        .map((c) => c.trim().toUpperCase())
+        .filter((c) => c.length > 0);
+
+      const config: StripeConfiguration = {
+        secretKey: stripeFormData.secretKey.trim(),
+        allowedCountries: countries,
+      };
+
+      await setStripeConfiguration.mutateAsync(config);
+      toast.success('Stripe configuration saved successfully');
+      setIsStripeFormOpen(false);
+      setStripeFormData({ secretKey: '', allowedCountries: 'IN' });
+      setStripeFormErrors({});
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to save Stripe configuration');
+    }
+  };
+
+  const formatPrice = (priceCents: bigint): string => {
+    return `₹${(Number(priceCents) / 100).toFixed(2)}`;
+  };
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col bg-background">
       <TopNav />
-      <main className="flex-1 section-spacing-sm">
+      
+      <main className="flex-1 py-12">
         <Container>
-          <div className="mb-8">
-            <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-4xl md:text-5xl font-bold mb-4">Product Management</h1>
-                <p className="text-lg text-muted-foreground">
-                  Add, edit, and manage your product catalog
-                </p>
-              </div>
-              <Button onClick={openCreateDialog} className="gap-2">
-                <Plus className="h-4 w-4" />
-                Add Product
-              </Button>
+          <div className="space-y-8">
+            {/* Header */}
+            <div>
+              <h1 className="text-4xl font-bold text-foreground mb-2">Admin Dashboard</h1>
+              <p className="text-muted-foreground">
+                Manage products, Stripe configuration, and admin access
+              </p>
             </div>
-          </div>
 
-          {isLoading && (
-            <div className="flex items-center justify-center py-20">
-              <div className="text-center">
-                <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto mb-4" />
-                <p className="text-muted-foreground">Loading products...</p>
-              </div>
-            </div>
-          )}
+            {/* Admin Reset Section */}
+            <AdminResetCard />
 
-          {error && (
-            <Card className="border-destructive">
-              <CardHeader>
-                <CardTitle className="text-destructive">Error Loading Products</CardTitle>
-                <CardDescription>
-                  Failed to load products. Please try refreshing the page.
-                </CardDescription>
-              </CardHeader>
-            </Card>
-          )}
+            {/* Admin Credentials Rotation Section */}
+            <AdminCredentialsRotation />
 
-          {!isLoading && !error && products && (
+            {/* Admin Management Section */}
+            <AdminManagement />
+
+            {/* Stripe Configuration Section */}
             <Card>
               <CardHeader>
-                <CardTitle>Products ({products.length})</CardTitle>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <CreditCard className="h-5 w-5 text-primary" />
+                    <CardTitle>Stripe Configuration</CardTitle>
+                  </div>
+                  <Button
+                    onClick={() => setIsStripeFormOpen(true)}
+                    variant="outline"
+                    size="sm"
+                  >
+                    {isStripeConfigured ? 'Update Configuration' : 'Configure Stripe'}
+                  </Button>
+                </div>
                 <CardDescription>
-                  Manage your product inventory
+                  Configure Stripe payment processing for your store
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                {products.length === 0 ? (
+                {stripeConfigLoading ? (
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span>Checking configuration...</span>
+                  </div>
+                ) : isStripeConfigured ? (
+                  <Alert>
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertTitle>Stripe is configured</AlertTitle>
+                    <AlertDescription>
+                      Payment processing is active. Click "Update Configuration" to change settings.
+                    </AlertDescription>
+                  </Alert>
+                ) : (
+                  <Alert variant="destructive">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertTitle>Stripe not configured</AlertTitle>
+                    <AlertDescription>
+                      Payment processing is not available. Click "Configure Stripe" to set up payments.
+                    </AlertDescription>
+                  </Alert>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Products Section */}
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle>Products</CardTitle>
+                    <CardDescription>
+                      Manage your product catalog
+                    </CardDescription>
+                  </div>
+                  <Button onClick={openCreateDialog} className="gap-2">
+                    <Plus className="h-4 w-4" />
+                    Add Product
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {isLoading ? (
+                  <div className="flex items-center justify-center py-12">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                  </div>
+                ) : error ? (
+                  <Alert variant="destructive">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertTitle>Error loading products</AlertTitle>
+                    <AlertDescription>
+                      {error instanceof Error ? error.message : 'Failed to load products'}
+                    </AlertDescription>
+                  </Alert>
+                ) : !products || products.length === 0 ? (
                   <div className="text-center py-12">
-                    <ImageIcon className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
                     <p className="text-muted-foreground mb-4">No products yet</p>
                     <Button onClick={openCreateDialog} variant="outline" className="gap-2">
                       <Plus className="h-4 w-4" />
@@ -293,15 +408,14 @@ export default function AdminPage() {
                     </Button>
                   </div>
                 ) : (
-                  <div className="overflow-x-auto">
+                  <div className="rounded-md border">
                     <Table>
                       <TableHeader>
                         <TableRow>
-                          <TableHead>Image</TableHead>
+                          <TableHead className="w-16">Image</TableHead>
                           <TableHead>Name</TableHead>
                           <TableHead>Category</TableHead>
                           <TableHead>Price</TableHead>
-                          <TableHead>Description</TableHead>
                           <TableHead className="text-right">Actions</TableHead>
                         </TableRow>
                       </TableHeader>
@@ -309,43 +423,36 @@ export default function AdminPage() {
                         {products.map((product) => (
                           <TableRow key={product.id.toString()}>
                             <TableCell>
-                              <div className="w-16 h-16 rounded-md overflow-hidden bg-muted flex items-center justify-center">
-                                {product.image ? (
-                                  <img
-                                    src={product.image.getDirectURL()}
-                                    alt={product.name}
-                                    className="w-full h-full object-cover"
-                                  />
-                                ) : (
+                              {product.image ? (
+                                <img
+                                  src={product.image.getDirectURL()}
+                                  alt={product.name}
+                                  className="w-12 h-12 object-cover rounded"
+                                />
+                              ) : (
+                                <div className="w-12 h-12 bg-muted rounded flex items-center justify-center">
                                   <ImageIcon className="h-6 w-6 text-muted-foreground" />
-                                )}
-                              </div>
+                                </div>
+                              )}
                             </TableCell>
                             <TableCell className="font-medium">{product.name}</TableCell>
                             <TableCell>{product.category}</TableCell>
-                            <TableCell>₹{(Number(product.priceCents) / 100).toFixed(2)}</TableCell>
-                            <TableCell className="max-w-xs truncate">
-                              {product.description}
-                            </TableCell>
+                            <TableCell>{formatPrice(product.priceCents)}</TableCell>
                             <TableCell className="text-right">
-                              <div className="flex justify-end gap-2">
+                              <div className="flex items-center justify-end gap-2">
                                 <Button
-                                  variant="outline"
+                                  variant="ghost"
                                   size="sm"
                                   onClick={() => openEditDialog(product)}
-                                  className="gap-2"
                                 >
-                                  <Pencil className="h-3 w-3" />
-                                  Edit
+                                  <Pencil className="h-4 w-4" />
                                 </Button>
                                 <Button
-                                  variant="destructive"
+                                  variant="ghost"
                                   size="sm"
-                                  onClick={() => setDeleteConfirmProduct(product)}
-                                  className="gap-2"
+                                  onClick={() => handleDeleteClick(product)}
                                 >
-                                  <Trash2 className="h-3 w-3" />
-                                  Delete
+                                  <Trash2 className="h-4 w-4 text-destructive" />
                                 </Button>
                               </div>
                             </TableCell>
@@ -357,39 +464,33 @@ export default function AdminPage() {
                 )}
               </CardContent>
             </Card>
-          )}
+          </div>
         </Container>
       </main>
+
       <Footer />
 
       {/* Product Form Dialog */}
-      <Dialog open={isFormOpen} onOpenChange={(open) => {
-        if (!open && !isSaving) {
-          setIsFormOpen(false);
-          resetForm();
-        }
-      }}>
+      <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>
-              {editingProduct ? 'Edit Product' : 'Add New Product'}
-            </DialogTitle>
+            <DialogTitle>{editingProduct ? 'Edit Product' : 'Add New Product'}</DialogTitle>
             <DialogDescription>
-              {editingProduct
-                ? 'Update the product details below'
-                : 'Fill in the details to create a new product'}
+              {editingProduct ? 'Update product information' : 'Add a new product to your catalog'}
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4 py-4">
+          <div className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="name">Product Name *</Label>
+              <Label htmlFor="name">Product Name</Label>
               <Input
                 id="name"
                 value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                onChange={(e) => {
+                  setFormData({ ...formData, name: e.target.value });
+                  setFormErrors({ ...formErrors, name: undefined });
+                }}
                 placeholder="e.g., Fresh Carrots"
-                disabled={isSaving}
               />
               {formErrors.name && (
                 <p className="text-sm text-destructive">{formErrors.name}</p>
@@ -397,14 +498,16 @@ export default function AdminPage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="description">Description *</Label>
+              <Label htmlFor="description">Description</Label>
               <Textarea
                 id="description"
                 value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                onChange={(e) => {
+                  setFormData({ ...formData, description: e.target.value });
+                  setFormErrors({ ...formErrors, description: undefined });
+                }}
                 placeholder="Describe the product..."
                 rows={3}
-                disabled={isSaving}
               />
               {formErrors.description && (
                 <p className="text-sm text-destructive">{formErrors.description}</p>
@@ -413,16 +516,17 @@ export default function AdminPage() {
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="price">Price (₹) *</Label>
+                <Label htmlFor="priceCents">Price (₹)</Label>
                 <Input
-                  id="price"
+                  id="priceCents"
                   type="number"
                   step="0.01"
-                  min="0"
                   value={formData.priceCents}
-                  onChange={(e) => setFormData({ ...formData, priceCents: e.target.value })}
+                  onChange={(e) => {
+                    setFormData({ ...formData, priceCents: e.target.value });
+                    setFormErrors({ ...formErrors, priceCents: undefined });
+                  }}
                   placeholder="0.00"
-                  disabled={isSaving}
                 />
                 {formErrors.priceCents && (
                   <p className="text-sm text-destructive">{formErrors.priceCents}</p>
@@ -430,11 +534,13 @@ export default function AdminPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="category">Category *</Label>
+                <Label htmlFor="category">Category</Label>
                 <Select
                   value={formData.category}
-                  onValueChange={(value) => setFormData({ ...formData, category: value })}
-                  disabled={isSaving}
+                  onValueChange={(value) => {
+                    setFormData({ ...formData, category: value });
+                    setFormErrors({ ...formErrors, category: undefined });
+                  }}
                 >
                   <SelectTrigger id="category">
                     <SelectValue />
@@ -455,68 +561,57 @@ export default function AdminPage() {
 
             <div className="space-y-2">
               <Label htmlFor="image">Product Image</Label>
-              <div className="space-y-4">
-                <Input
-                  id="image"
-                  type="file"
-                  accept="image/*"
-                  onChange={handleImageSelect}
-                  disabled={isSaving}
-                />
-                {formErrors.imageFile && (
-                  <p className="text-sm text-destructive">{formErrors.imageFile}</p>
-                )}
-                
-                {imagePreview && (
-                  <div className="border rounded-lg p-4 bg-muted/50">
-                    <p className="text-sm font-medium mb-2">Preview:</p>
-                    <img
-                      src={imagePreview}
-                      alt="Preview"
-                      className="max-w-full h-48 object-contain rounded-md mx-auto"
-                    />
-                  </div>
-                )}
-
-                {uploadProgress > 0 && uploadProgress < 100 && (
-                  <div className="space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span>Uploading...</span>
-                      <span>{uploadProgress}%</span>
-                    </div>
-                    <div className="w-full bg-muted rounded-full h-2">
+              <Input
+                id="image"
+                type="file"
+                accept="image/*"
+                onChange={handleImageSelect}
+              />
+              {formErrors.imageFile && (
+                <p className="text-sm text-destructive">{formErrors.imageFile}</p>
+              )}
+              {imagePreview && (
+                <div className="mt-2">
+                  <img
+                    src={imagePreview}
+                    alt="Preview"
+                    className="w-full h-48 object-cover rounded-lg"
+                  />
+                </div>
+              )}
+              {uploadProgress > 0 && uploadProgress < 100 && (
+                <div className="mt-2">
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1 bg-muted rounded-full h-2">
                       <div
                         className="bg-primary h-2 rounded-full transition-all"
                         style={{ width: `${uploadProgress}%` }}
                       />
                     </div>
+                    <span className="text-sm text-muted-foreground">{uploadProgress}%</span>
                   </div>
-                )}
-              </div>
+                </div>
+              )}
             </div>
           </div>
 
           <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => {
-                setIsFormOpen(false);
-                resetForm();
-              }}
-              disabled={isSaving}
-            >
+            <Button variant="outline" onClick={() => setIsFormOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={handleSubmit} disabled={isSaving} className="gap-2">
-              {isSaving ? (
+            <Button
+              onClick={handleSubmit}
+              disabled={createProduct.isPending || updateProduct.isPending}
+            >
+              {createProduct.isPending || updateProduct.isPending ? (
                 <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  {editingProduct ? 'Updating...' : 'Creating...'}
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Saving...
                 </>
+              ) : editingProduct ? (
+                'Update Product'
               ) : (
-                <>
-                  {editingProduct ? 'Update Product' : 'Create Product'}
-                </>
+                'Add Product'
               )}
             </Button>
           </DialogFooter>
@@ -524,38 +619,101 @@ export default function AdminPage() {
       </Dialog>
 
       {/* Delete Confirmation Dialog */}
-      <AlertDialog
-        open={!!deleteConfirmProduct}
-        onOpenChange={(open) => !open && setDeleteConfirmProduct(null)}
-      >
+      <AlertDialog open={!!deleteConfirmProduct} onOpenChange={(open) => !open && handleDeleteCancel()}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogTitle>Delete Product</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently delete "{deleteConfirmProduct?.name}". This action cannot be undone.
+              Are you sure you want to delete "{deleteConfirmProduct?.name}"? This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={deleteProduct.isPending}>
-              Cancel
-            </AlertDialogCancel>
+            <AlertDialogCancel onClick={handleDeleteCancel}>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              onClick={handleDelete}
-              disabled={deleteProduct.isPending}
+              onClick={handleDeleteConfirm}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               {deleteProduct.isPending ? (
                 <>
-                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Deleting...
                 </>
               ) : (
-                'Delete Product'
+                'Delete'
               )}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Stripe Configuration Dialog */}
+      <Dialog open={isStripeFormOpen} onOpenChange={setIsStripeFormOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Configure Stripe</DialogTitle>
+            <DialogDescription>
+              Set up Stripe payment processing for your store
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="secretKey">Stripe Secret Key</Label>
+              <Input
+                id="secretKey"
+                type="password"
+                value={stripeFormData.secretKey}
+                onChange={(e) => {
+                  setStripeFormData({ ...stripeFormData, secretKey: e.target.value });
+                  setStripeFormErrors({ ...stripeFormErrors, secretKey: undefined });
+                }}
+                placeholder="sk_test_..."
+              />
+              {stripeFormErrors.secretKey && (
+                <p className="text-sm text-destructive">{stripeFormErrors.secretKey}</p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="allowedCountries">Allowed Countries (comma-separated)</Label>
+              <Input
+                id="allowedCountries"
+                value={stripeFormData.allowedCountries}
+                onChange={(e) => {
+                  setStripeFormData({ ...stripeFormData, allowedCountries: e.target.value });
+                  setStripeFormErrors({ ...stripeFormErrors, allowedCountries: undefined });
+                }}
+                placeholder="IN, US, GB"
+              />
+              {stripeFormErrors.allowedCountries && (
+                <p className="text-sm text-destructive">{stripeFormErrors.allowedCountries}</p>
+              )}
+              <p className="text-sm text-muted-foreground">
+                Enter country codes (e.g., IN for India, US for United States)
+              </p>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsStripeFormOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleStripeSubmit}
+              disabled={setStripeConfiguration.isPending}
+            >
+              {setStripeConfiguration.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                'Save Configuration'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

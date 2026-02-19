@@ -21,7 +21,9 @@ export type ExternalBlob = Uint8Array;
 export interface Order {
   'id' : bigint,
   'status' : OrderStatus,
+  'paymentStatus' : PaymentStatus,
   'customer' : Principal,
+  'tracking' : Array<OrderTrackingEntry>,
   'totalPriceCents' : bigint,
   'pickupTime' : [] | [Time],
   'timestamp' : Time,
@@ -32,6 +34,20 @@ export type OrderStatus = { 'canceled' : null } |
   { 'pending' : null } |
   { 'completed' : null } |
   { 'confirmed' : null };
+export interface OrderTrackingEntry {
+  'status' : OrderStatus,
+  'note' : string,
+  'timestamp' : Time,
+}
+export type PaymentStatus = { 'pending' : null } |
+  {
+    'completed' : {
+      'amountCents' : bigint,
+      'timestamp' : Time,
+      'sessionId' : string,
+    }
+  } |
+  { 'failed' : { 'reason' : string } };
 export interface Product {
   'id' : bigint,
   'name' : string,
@@ -40,7 +56,31 @@ export interface Product {
   'image' : [] | [ExternalBlob],
   'priceCents' : bigint,
 }
+export interface ShoppingItem {
+  'productName' : string,
+  'currency' : string,
+  'quantity' : bigint,
+  'priceInCents' : bigint,
+  'productDescription' : string,
+}
+export interface StripeConfiguration {
+  'allowedCountries' : Array<string>,
+  'secretKey' : string,
+}
+export type StripeSessionStatus = {
+    'completed' : { 'userPrincipal' : [] | [string], 'response' : string }
+  } |
+  { 'failed' : { 'error' : string } };
 export type Time = bigint;
+export interface TransformationInput {
+  'context' : Uint8Array,
+  'response' : http_request_result,
+}
+export interface TransformationOutput {
+  'status' : bigint,
+  'body' : Uint8Array,
+  'headers' : Array<http_header>,
+}
 export type UserRole = { 'admin' : null } |
   { 'user' : null } |
   { 'guest' : null };
@@ -54,6 +94,12 @@ export interface _CaffeineStorageRefillInformation {
 export interface _CaffeineStorageRefillResult {
   'success' : [] | [boolean],
   'topped_up_amount' : [] | [bigint],
+}
+export interface http_header { 'value' : string, 'name' : string }
+export interface http_request_result {
+  'status' : bigint,
+  'body' : Uint8Array,
+  'headers' : Array<http_header>,
 }
 export interface _SERVICE {
   '_caffeineStorageBlobIsLive' : ActorMethod<[Uint8Array], boolean>,
@@ -74,7 +120,13 @@ export interface _SERVICE {
   '_initializeAccessControlWithSecret' : ActorMethod<[string], undefined>,
   'addToCart' : ActorMethod<[bigint, bigint], undefined>,
   'assignCallerUserRole' : ActorMethod<[Principal, UserRole], undefined>,
+  'authenticateAdmin' : ActorMethod<[string, string], undefined>,
+  'checkUserRole' : ActorMethod<[Principal], UserRole>,
   'clearCart' : ActorMethod<[], undefined>,
+  'createCheckoutSession' : ActorMethod<
+    [Array<ShoppingItem>, string, string],
+    string
+  >,
   'createProduct' : ActorMethod<
     [string, string, bigint, string, [] | [ExternalBlob]],
     Product
@@ -82,18 +134,32 @@ export interface _SERVICE {
   'deleteProduct' : ActorMethod<[bigint], undefined>,
   'getCallerUserRole' : ActorMethod<[], UserRole>,
   'getCart' : ActorMethod<[], Cart>,
+  'getCatalogMetadata' : ActorMethod<[], { 'productCount' : bigint }>,
   'getCustomerByPrincipal' : ActorMethod<[Principal], Customer>,
   'getIdForCaller' : ActorMethod<[], Principal>,
   'getOrderById' : ActorMethod<[bigint], Order>,
   'getOrders' : ActorMethod<[], Array<Order>>,
   'getProductById' : ActorMethod<[bigint], Product>,
   'getProductImage' : ActorMethod<[bigint], [] | [ExternalBlob]>,
+  'getStripeSessionStatus' : ActorMethod<[string], StripeSessionStatus>,
+  'grantAdminRole' : ActorMethod<[Principal], undefined>,
+  'grantUserRole' : ActorMethod<[Principal], undefined>,
+  'initialize' : ActorMethod<[], undefined>,
+  'initializeAdminAccess' : ActorMethod<[string, string], undefined>,
+  'isAdminConfigured' : ActorMethod<[], boolean>,
   'isCallerAdmin' : ActorMethod<[], boolean>,
+  'isStripeConfigured' : ActorMethod<[], boolean>,
   'listAllProducts' : ActorMethod<[], Array<Product>>,
   'listProducts' : ActorMethod<[[] | [string]], Array<Product>>,
   'placeOrder' : ActorMethod<[[] | [Time]], bigint>,
   'registerCustomer' : ActorMethod<[string, string, string], undefined>,
   'removeFromCart' : ActorMethod<[bigint], undefined>,
+  'revokeAdminRole' : ActorMethod<[Principal], undefined>,
+  'setOrderCompleted' : ActorMethod<[bigint], undefined>,
+  'setOrderPaid' : ActorMethod<[bigint, string, bigint], undefined>,
+  'setStripeConfiguration' : ActorMethod<[StripeConfiguration], undefined>,
+  'transform' : ActorMethod<[TransformationInput], TransformationOutput>,
+  'updateAdminCredentials' : ActorMethod<[string, string], undefined>,
   'updateCartItem' : ActorMethod<[bigint, bigint], undefined>,
   'updateProduct' : ActorMethod<
     [bigint, string, string, bigint, string, [] | [ExternalBlob]],

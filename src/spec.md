@@ -1,12 +1,11 @@
 # Specification
 
 ## Summary
-**Goal:** Make the Admin product management area visible in the app navigation while restricting access to a controller-managed allowlist of Internet Identity principals (intended for the Internet Identity linked to Google account grandzbee@gmail.com).
+**Goal:** Eliminate the post-reset “circular lockout” by fully clearing admin configuration on upgrade and providing a supported way to re-establish the first admin, with the frontend using the new setup API.
 
 **Planned changes:**
-- Add a clearly visible “Admin” navigation entry that routes to `/admin` for all users, while keeping the `/admin` route protected by the existing admin guard.
-- Implement/extend backend admin authorization using an allowlist of Internet Identity principals, including a controller-only method to add an admin principal.
-- Enforce admin-only authorization on product management APIs (create/update/delete/listAll/uploadProductImage) so non-allowlisted principals receive an authorization error.
-- Update `/admin` access denied messaging to state that users must sign in with Internet Identity and that admin access is restricted to the Internet Identity linked to Google account grandzbee@gmail.com (no claims of Google OAuth login support).
+- Add a backend canister upgrade migration that resets admin credentials to null and clears all AccessControl role assignments so no principal remains admin after reset.
+- Add a backend “initial admin setup” API that, only when credentials are not configured, lets an authenticated Internet Identity caller set initial admin username/password and become admin in the same operation; reject when credentials already exist.
+- Update the frontend Initial Admin Setup flow to call the new initial-setup API, show actionable errors when setup is disallowed, and invalidate/refetch relevant React Query admin-state caches after successful setup.
 
-**User-visible outcome:** Everyone can see and click an “Admin” link; non-admins see an access denied screen with correct Internet Identity messaging, while the allowlisted admin can access and use the admin product management UI.
+**User-visible outcome:** After an admin reset or on a fresh install, the first Internet Identity user can successfully configure initial admin credentials and immediately access the admin dashboard without seeing the lockout error; if admin is already configured, the UI guides the user to use the normal admin login path.

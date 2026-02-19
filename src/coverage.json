@@ -1,55 +1,57 @@
 {
   "kind": "coverage_report",
   "version": "1.0",
-  "generatedAt": "2026-02-10T16:20:40.418Z",
+  "generatedAt": "2026-02-12T10:21:29.939Z",
   "sources": {
     "buildRequest": true,
     "implementationPlan": true
   },
   "requirements": {
     "total": 3,
-    "implemented": 2,
+    "implemented": 1,
     "items": [
       {
         "id": "REQ-1",
-        "summary": "Make the admin area discoverable in the UI by adding a clearly visible navigation entry that routes to /admin, even when the current user is not an admin (the page must still be protected by the admin guard).",
-        "status": "implemented",
-        "plannedFiles": [
-          "frontend/src/components/landing/TopNav.tsx",
-          "frontend/src/App.tsx"
-        ],
-        "matchedFiles": [
-          "frontend/src/components/landing/TopNav.tsx"
-        ]
+        "summary": "Implement a backend canister upgrade migration that fully resets admin configuration by (1) setting stored admin credentials to null and (2) clearing/removing all AccessControl role assignments so that no principal retains the admin role after the reset.",
+        "status": "unknown",
+        "plannedFiles": [],
+        "matchedFiles": []
       },
       {
         "id": "REQ-2",
-        "summary": "Enforce admin access based on an allowlist of Internet Identity principals, and provide a backend mechanism for a canister controller to add the admin principal corresponding to the Internet Identity that is linked to Google account grandzbee@gmail.com.",
+        "summary": "Add a backend API that allows re-initializing admin access after a reset: when admin credentials are currently not configured, allow an authenticated Internet Identity caller to set new initial admin username/password and become the first admin. This must be rejected if admin credentials already exist.",
         "status": "unknown",
         "plannedFiles": [],
         "matchedFiles": []
       },
       {
         "id": "REQ-3",
-        "summary": "Update user-facing admin-access messaging to reflect the actual authentication model: users must sign in with Internet Identity, and only the Internet Identity that is linked to Google account grandzbee@gmail.com is permitted as admin.",
+        "summary": "Update the frontend initial admin setup flow to use the new backend initial-setup API (instead of the current workaround that throws an error on \"Credentials not set\"), so that clicking \"Configure Admin Credentials\" successfully completes setup after a reset and stops showing the circular-lockout error banner.",
         "status": "implemented",
         "plannedFiles": [
-          "frontend/src/components/auth/RequireAdmin.tsx"
+          "frontend/src/hooks/useInitialAdminSetup.ts",
+          "frontend/src/components/admin/InitialAdminSetupForm.tsx"
         ],
         "matchedFiles": [
-          "frontend/src/components/auth/RequireAdmin.tsx"
+          "frontend/src/hooks/useInitialAdminSetup.ts",
+          "frontend/src/components/admin/InitialAdminSetupForm.tsx"
         ]
       }
     ]
   },
   "changedFiles": [
     "backend/main.mo",
+    "backend/migration.mo",
     "build-request.json",
     "feature_evidence.json",
     "frontend-file-summaries.txt",
     "frontend-implementation-plan.json",
-    "frontend/src/components/auth/RequireAdmin.tsx",
-    "frontend/src/components/landing/TopNav.tsx",
+    "frontend/src/backend.d.ts",
+    "frontend/src/backend.ts",
+    "frontend/src/components/admin/InitialAdminSetupForm.tsx",
+    "frontend/src/declarations/backend.did.d.ts",
+    "frontend/src/declarations/backend.did.js",
+    "frontend/src/hooks/useInitialAdminSetup.ts",
     "project_state.json",
     "scratch/component-selection.json",
     "spec.md",

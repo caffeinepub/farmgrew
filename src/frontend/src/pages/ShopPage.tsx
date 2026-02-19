@@ -5,8 +5,9 @@ import Footer from '../components/landing/Footer';
 import Container from '../components/layout/Container';
 import CategoryFilter from '../components/shop/CategoryFilter';
 import ProductCard from '../components/shop/ProductCard';
-import { Loader2, RefreshCw } from 'lucide-react';
+import { Loader2, RefreshCw, Package } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useNavigate } from '@tanstack/react-router';
 
 const CATEGORIES = [
   { id: 'all', label: 'All Products' },
@@ -21,6 +22,7 @@ export default function ShopPage() {
   const { data: products, isLoading, error, refetch, isRefetching } = useProducts(
     selectedCategory === 'all' ? null : selectedCategory
   );
+  const navigate = useNavigate();
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -58,30 +60,40 @@ export default function ShopPage() {
           {!isLoading && !error && products && products.length === 0 && (
             <div className="text-center py-20">
               <div className="max-w-md mx-auto">
-                <p className="text-muted-foreground text-lg mb-4">
-                  No products are currently available. The catalog may not be seeded yet.
+                <Package className="h-16 w-16 text-muted-foreground mx-auto mb-6" />
+                <h2 className="text-2xl font-semibold mb-3">No Products Available</h2>
+                <p className="text-muted-foreground text-lg mb-2">
+                  There are currently no products in the catalog.
                 </p>
                 <p className="text-muted-foreground mb-6">
-                  Please try again later or refresh to check for updates.
+                  If you're an admin, please visit the Admin Dashboard to add products.
                 </p>
-                <Button
-                  onClick={() => refetch()}
-                  disabled={isRefetching}
-                  variant="outline"
-                  className="gap-2"
-                >
-                  {isRefetching ? (
-                    <>
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      Refreshing...
-                    </>
-                  ) : (
-                    <>
-                      <RefreshCw className="h-4 w-4" />
-                      Refresh Products
-                    </>
-                  )}
-                </Button>
+                <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                  <Button
+                    onClick={() => refetch()}
+                    disabled={isRefetching}
+                    variant="outline"
+                    className="gap-2"
+                  >
+                    {isRefetching ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Refreshing...
+                      </>
+                    ) : (
+                      <>
+                        <RefreshCw className="h-4 w-4" />
+                        Refresh Products
+                      </>
+                    )}
+                  </Button>
+                  <Button
+                    onClick={() => navigate({ to: '/admin' })}
+                    className="gap-2"
+                  >
+                    Go to Admin Dashboard
+                  </Button>
+                </div>
               </div>
             </div>
           )}

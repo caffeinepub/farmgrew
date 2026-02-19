@@ -3,16 +3,19 @@ import Nat "mo:core/Nat";
 import Time "mo:core/Time";
 import Text "mo:core/Text";
 import Runtime "mo:core/Runtime";
-import Principal "mo:core/Principal";
 import Iter "mo:core/Iter";
-
-import MixinAuthorization "authorization/MixinAuthorization";
+import List "mo:core/List";
+import Principal "mo:core/Principal";
 import AccessControl "authorization/access-control";
-import MixinStorage "blob-storage/Mixin";
+
+import OutCall "http-outcalls/outcall";
 import Storage "blob-storage/Storage";
+import Stripe "stripe/stripe";
+import MixinStorage "blob-storage/Mixin";
+import MixinAuthorization "authorization/MixinAuthorization";
+import Migration "migration";
 
-
-
+(with migration = Migration.run)
 actor {
   include MixinStorage();
 
@@ -44,16 +47,35 @@ actor {
     #canceled;
   };
 
+  public type PaymentStatus = {
+    #pending;
+    #completed : {
+      sessionId : Text;
+      amountCents : Nat;
+      timestamp : Time.Time;
+    };
+    #failed : { reason : Text };
+  };
+
+  public type OrderTrackingEntry = {
+    status : OrderStatus;
+    timestamp : Time.Time;
+    note : Text;
+  };
+
   public type Order = {
     id : Nat;
     customer : Principal;
     items : [(Nat, Nat)];
     totalPriceCents : Nat;
     status : OrderStatus;
+    paymentStatus : PaymentStatus;
     timestamp : Time.Time;
     pickupTime : ?Time.Time;
+    tracking : [OrderTrackingEntry];
   };
 
+  stable var _adminCredentials : ?AdminCredentials = null;
   let accessControlState = AccessControl.initState();
   include MixinAuthorization(accessControlState);
 
@@ -64,6 +86,8 @@ actor {
   let carts = Map.empty<Principal, [(Nat, Nat)]>();
   let orders = Map.empty<Nat, Order>();
   var nextOrderId = 1;
+
+  var stripeConfig : ?Stripe.StripeConfiguration = null;
 
   let productImageMapping = Map.fromIter(
     [
@@ -113,7 +137,70 @@ actor {
   let PRODUCT_NOT_FOUND_MESSAGE = "Product not found";
   let ORDER_NOT_FOUND_MESSAGE = "Order not found";
   let NOT_ENOUGH_QUANTITY_MESSAGE = "Not enough quantity in cart";
-  let ADD_TO_CART_QUANTITY_LIMIT_MESSAGE = "Can only buy up to 10 units at a time";
+  let ADD_TO_CART_QUANTITY_LIMIT_MESSAGE = "Can only buy upto 10 units at a time";
+
+  public type AdminCredentials = {
+    username : Text;
+    password : Text;
+  };
+
+  public shared ({ caller }) func authenticateAdmin(username : Text, password : Text) : async () {
+    switch (_adminCredentials) {
+      case (null) { Runtime.trap("Credentials not set") };
+      case (?creds) {
+        if (username == creds.username and creds.password == password) {
+          let role = AccessControl.getUserRole(accessControlState, caller);
+          switch (role) {
+            case (#admin) { () };
+            case (_) {
+              AccessControl.assignRole(accessControlState, caller, caller, #admin);
+            };
+          };
+        } else {
+          Runtime.trap("Wrong username or password");
+        };
+      };
+    };
+  };
+
+  public shared ({ caller }) func updateAdminCredentials(username : Text, password : Text) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
+      Runtime.trap("Unauthorized: Only current admin can change credentials");
+    };
+
+    _adminCredentials := ?{
+      username;
+      password;
+    };
+  };
+
+  public shared ({ caller }) func grantAdminRole(user : Principal) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
+      Runtime.trap("Unauthorized: Only admins can grant admin privileges");
+    };
+    AccessControl.assignRole(accessControlState, caller, user, #admin);
+  };
+
+  public shared ({ caller }) func revokeAdminRole(user : Principal) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
+      Runtime.trap("Unauthorized: Only admins can revoke admin privileges");
+    };
+    AccessControl.assignRole(accessControlState, caller, user, #user);
+  };
+
+  public shared ({ caller }) func grantUserRole(user : Principal) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
+      Runtime.trap("Unauthorized: Only admins can grant user role");
+    };
+    AccessControl.assignRole(accessControlState, caller, user, #user);
+  };
+
+  public query ({ caller }) func checkUserRole(user : Principal) : async AccessControl.UserRole {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
+      Runtime.trap("Unauthorized: Only admins can check user roles");
+    };
+    AccessControl.getUserRole(accessControlState, user);
+  };
 
   public query ({ caller }) func listProducts(category : ?Text) : async [Product] {
     products.values().toArray().filter(
@@ -130,6 +217,14 @@ actor {
     switch (products.get(productId)) {
       case (null) { Runtime.trap(PRODUCT_NOT_FOUND_MESSAGE) };
       case (?product) { product };
+    };
+  };
+
+  public query ({ caller }) func getCatalogMetadata() : async {
+    productCount : Nat;
+  } {
+    return {
+      productCount = products.size();
     };
   };
 
@@ -360,19 +455,91 @@ actor {
     let orderId = nextOrderId;
     nextOrderId += 1;
 
+    let initialTracking = [
+      {
+        status = #pending;
+        timestamp = Time.now();
+        note = "Order placed";
+      },
+    ];
+
     let order : Order = {
       id = orderId;
       customer = caller;
       items = cartItems;
       totalPriceCents;
       status = #pending;
+      paymentStatus = #pending;
       timestamp = Time.now();
       pickupTime;
+      tracking = initialTracking;
     };
 
     orders.add(orderId, order);
     carts.remove(caller);
     orderId;
+  };
+
+  public shared ({ caller }) func setOrderPaid(orderId : Nat, sessionId : Text, amountCents : Nat) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only authenticated users can set order as paid");
+    };
+
+    let order = switch (orders.get(orderId)) {
+      case (null) { Runtime.trap(ORDER_NOT_FOUND_MESSAGE) };
+      case (?order) { order };
+    };
+
+    // Verify ownership
+    if (order.customer != caller) {
+      Runtime.trap("Unauthorized: Can only mark your own orders as paid");
+    };
+
+    let updatedTracking = List.fromArray<OrderTrackingEntry>(order.tracking);
+    updatedTracking.add({
+      status = #confirmed;
+      timestamp = Time.now();
+      note = "Payment confirmed, order confirmed";
+    });
+
+    let updatedOrder : Order = {
+      order with
+      paymentStatus = #completed {
+        sessionId;
+        amountCents;
+        timestamp = Time.now();
+      };
+      status = #confirmed;
+      tracking = updatedTracking.toArray();
+    };
+
+    orders.add(orderId, updatedOrder);
+  };
+
+  public shared ({ caller }) func setOrderCompleted(orderId : Nat) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
+      Runtime.trap("Unauthorized: Only admins can complete orders");
+    };
+
+    let order = switch (orders.get(orderId)) {
+      case (null) { Runtime.trap(ORDER_NOT_FOUND_MESSAGE) };
+      case (?order) { order };
+    };
+
+    let updatedTracking = List.fromArray<OrderTrackingEntry>(order.tracking);
+    updatedTracking.add({
+      status = #completed;
+      timestamp = Time.now();
+      note = "Order completed";
+    });
+
+    let updatedOrder : Order = {
+      order with
+      status = #completed;
+      tracking = updatedTracking.toArray();
+    };
+
+    orders.add(orderId, updatedOrder);
   };
 
   public shared ({ caller }) func createProduct(name : Text, description : Text, priceCents : Nat, category : Text, image : ?Storage.ExternalBlob) : async Product {
@@ -444,7 +611,7 @@ actor {
 
   public shared ({ caller }) func uploadProductImage(productId : Nat, image : Storage.ExternalBlob) : async Storage.ExternalBlob {
     if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
-      Runtime.trap("Unauthorized: Only admins can upload images");
+      Runtime.trap("Unauthorized: Only admins can upload product images");
     };
 
     let product = switch (products.get(productId)) {
@@ -464,5 +631,78 @@ actor {
       case (null) { Runtime.trap("Product not found") };
       case (?product) { product.image };
     };
+  };
+
+  // Stripe Integration Functions
+  public query func isStripeConfigured() : async Bool {
+    stripeConfig != null;
+  };
+
+  public shared ({ caller }) func initialize() : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
+      Runtime.trap("Unauthorized: Only admins can initialize Stripe configuration");
+    };
+    stripeConfig := null;
+  };
+
+  public shared ({ caller }) func setStripeConfiguration(config : Stripe.StripeConfiguration) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
+      Runtime.trap("Unauthorized: Only admins can set Stripe configuration");
+    };
+    stripeConfig := ?config;
+  };
+
+  func getStripeConfiguration() : Stripe.StripeConfiguration {
+    switch (stripeConfig) {
+      case (null) { Runtime.trap("Stripe needs to be first configured") };
+      case (?value) { value };
+    };
+  };
+
+  public shared ({ caller }) func getStripeSessionStatus(sessionId : Text) : async Stripe.StripeSessionStatus {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only authenticated users can check payment session status");
+    };
+    await Stripe.getSessionStatus(getStripeConfiguration(), sessionId, transform);
+  };
+
+  public shared ({ caller }) func createCheckoutSession(items : [Stripe.ShoppingItem], successUrl : Text, cancelUrl : Text) : async Text {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only authenticated users can create checkout sessions");
+    };
+    await Stripe.createCheckoutSession(getStripeConfiguration(), caller, items, successUrl, cancelUrl, transform);
+  };
+
+  public query func transform(input : OutCall.TransformationInput) : async OutCall.TransformationOutput {
+    OutCall.transform(input);
+  };
+
+  // Admin Reset Functionality
+  public query ({ caller }) func isAdminConfigured() : async Bool {
+    _adminCredentials != null;
+  };
+
+  public shared ({ caller }) func initializeAdminAccess(username : Text, password : Text) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only authenticated users can initialize admin access");
+    };
+
+    // Check if admin is already configured
+    if (_adminCredentials != null) {
+      Runtime.trap("Admin is already configured. Please use updateAdminCredentials to change settings.");
+    };
+
+    // Validate input
+    if (username == "" or password == "") {
+      Runtime.trap("Username and password must not be empty");
+    };
+
+    let credentials : AdminCredentials = {
+      username;
+      password;
+    };
+
+    _adminCredentials := ?credentials;
+    AccessControl.assignRole(accessControlState, caller, caller, #admin);
   };
 };

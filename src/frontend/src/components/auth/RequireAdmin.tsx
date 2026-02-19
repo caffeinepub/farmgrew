@@ -1,76 +1,65 @@
 import { type ReactNode } from 'react';
 import { useIsAdmin } from '../../hooks/useAdminProducts';
-import { navigate } from '../../router/navigation';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { ShieldAlert, Loader2 } from 'lucide-react';
-import Container from '../layout/Container';
-import TopNav from '../landing/TopNav';
-import Footer from '../landing/Footer';
+import { useInternetIdentity } from '../../hooks/useInternetIdentity';
+import { useIsAdminConfigured } from '../../hooks/useInitialAdminSetup';
+import AdminLoginForm from './AdminLoginForm';
+import InitialAdminSetupForm from '../admin/InitialAdminSetupForm';
+import { Loader2 } from 'lucide-react';
 
 interface RequireAdminProps {
   children: ReactNode;
 }
 
 export default function RequireAdmin({ children }: RequireAdminProps) {
-  const { data: isAdmin, isLoading } = useIsAdmin();
+  const { identity } = useInternetIdentity();
+  const { data: isAdmin, isLoading: adminLoading, isFetched: adminFetched } = useIsAdmin();
+  const { data: isConfigured, isLoading: configLoading, isFetched: configFetched } = useIsAdminConfigured();
 
+  const isAuthenticated = !!identity;
+  const isLoading = adminLoading || configLoading || !adminFetched || !configFetched;
+
+  // Show loading state while checking admin status and configuration
   if (isLoading) {
     return (
-      <div className="min-h-screen flex flex-col">
-        <TopNav />
-        <main className="flex-1 flex items-center justify-center">
-          <div className="text-center">
-            <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto mb-4" />
-            <p className="text-muted-foreground">Checking permissions...</p>
-          </div>
-        </main>
-        <Footer />
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="text-center">
+          <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto mb-4" />
+          <p className="text-lg text-muted-foreground">Verifying admin access...</p>
+        </div>
       </div>
     );
   }
 
-  if (!isAdmin) {
+  // Show initial setup form if authenticated but admin credentials are not configured
+  if (isAuthenticated && isConfigured === false) {
     return (
-      <div className="min-h-screen flex flex-col">
-        <TopNav />
-        <main className="flex-1 flex items-center justify-center py-12">
-          <Container>
-            <div className="max-w-md mx-auto">
-              <Card>
-                <CardHeader className="text-center">
-                  <div className="mx-auto w-12 h-12 rounded-full bg-destructive/10 flex items-center justify-center mb-4">
-                    <ShieldAlert className="h-6 w-6 text-destructive" />
-                  </div>
-                  <CardTitle>Access Denied</CardTitle>
-                  <CardDescription>
-                    Admin access is restricted to the Internet Identity linked to the Google account <strong>grandzbee@gmail.com</strong>. Please sign in with the authorized Internet Identity to access this page.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <Button
-                    onClick={() => navigate('/')}
-                    variant="default"
-                    className="w-full"
-                  >
-                    Back to Home
-                  </Button>
-                  <Button
-                    onClick={() => navigate('/shop')}
-                    variant="outline"
-                    className="w-full"
-                  >
-                    Go to Shop
-                  </Button>
-                </CardContent>
-              </Card>
-            </div>
-          </Container>
-        </main>
-        <Footer />
+      <div className="min-h-screen flex items-center justify-center bg-background p-4">
+        <InitialAdminSetupForm />
       </div>
     );
   }
 
-  return <>{children}</>;
+  // Show admin login form for authenticated non-admin users when credentials are configured
+  if (isAuthenticated && !isAdmin && isConfigured === true) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background p-4">
+        <AdminLoginForm />
+      </div>
+    );
+  }
+
+  // Render children only for admin users
+  if (isAdmin) {
+    return <>{children}</>;
+  }
+
+  // Fallback for unexpected states
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-background p-4">
+      <div className="text-center">
+        <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto mb-4" />
+        <p className="text-lg text-muted-foreground">Loading...</p>
+      </div>
+    </div>
+  );
 }

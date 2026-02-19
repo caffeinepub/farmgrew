@@ -1,41 +1,27 @@
 {
   "kind": "implementation_plan",
   "version": "1.0",
-  "title": "Discoverable protected admin route and correct Internet Identity admin messaging",
+  "title": "Fix initial admin setup to use backend initial-setup API and remove circular lockout messaging",
   "requirements": [
     {
-      "id": "REQ-1",
-      "summary": "Make /admin discoverable by always showing an Admin navigation entry while keeping the /admin page protected by the admin guard.",
+      "id": "REQ-3",
+      "summary": "Update initial admin setup flow to call the backend initial-setup API and refresh admin state after success.",
       "acceptanceCriteria": [
-        "Top navigation includes an \"Admin\" entry that navigates to /admin.",
-        "If a non-admin user clicks \"Admin\", they are routed to /admin and shown an access denied screen (no admin content is rendered).",
-        "If an admin user clicks \"Admin\", they are routed to /admin and the admin product management UI is rendered."
+        "On the Initial Admin Setup screen, submitting valid username/password/confirm password calls the backend initial-setup API and succeeds when the backend is in the reset/fresh state.",
+        "After success, the UI shows the existing success state and a subsequent reload allows access to the admin dashboard for that same Internet Identity principal.",
+        "If credentials are already configured, the UI shows an actionable error (e.g., instructing the user to use the admin login form) and does not claim that reset requires contacting an administrator.",
+        "React Query caches related to admin state (e.g., isAdminConfigured, isAdmin) are invalidated/refetched appropriately after setup success."
       ],
       "file_operations": [
         {
-          "path": "frontend/src/components/landing/TopNav.tsx",
+          "path": "frontend/src/hooks/useInitialAdminSetup.ts",
           "operation": "modify",
-          "description": "Remove the conditional rendering that hides the Admin link for non-admin users; always render the \"Admin\" navigation entry (desktop + mobile) routing to /admin, while optionally using the existing admin state (useIsAdmin) only for subtle UI hints (not for hiding). Use existing shadcn-ui primitives already imported (e.g., Button/Badge styling patterns) and existing routing helpers. Verify the component's usage instructions before implementing."
+          "description": "Replace the current workaround logic with direct calls to backend capabilities: use the backend isAdminConfigured() for configuration detection, and call initializeAdminAccess(username, password) for initial admin setup. Update error mapping to show an actionable message when setup is disallowed because credentials already exist. Invalidate/refetch React Query caches for admin state (e.g., ['isAdminConfigured'], ['isAdmin']) after successful setup. Use the authorization component’s Internet Identity + role-based access control flow as already wired in the app; verify the component's usage instructions before implementing."
         },
         {
-          "path": "frontend/src/App.tsx",
+          "path": "frontend/src/components/admin/InitialAdminSetupForm.tsx",
           "operation": "modify",
-          "description": "Confirm /admin remains routed through RequireAuth + RequireAdmin to ensure the admin guard still protects the AdminPage even though the navigation entry is visible to everyone; adjust only if needed to preserve the guard wiring (no new routes)."
-        }
-      ]
-    },
-    {
-      "id": "REQ-3",
-      "summary": "Update /admin access denied messaging to reflect Internet Identity sign-in and that admin access is restricted to the Internet Identity linked to grandzbee@gmail.com.",
-      "acceptanceCriteria": [
-        "The /admin access denied UI includes English text indicating that admin access is restricted to the Internet Identity linked to Google account grandzbee@gmail.com.",
-        "No UI claims that direct Google OAuth login is supported; wording references Internet Identity and linking to the specified Google account."
-      ],
-      "file_operations": [
-        {
-          "path": "frontend/src/components/auth/RequireAdmin.tsx",
-          "operation": "modify",
-          "description": "Update the Access Denied CardDescription (and any other visible copy in this screen) to explicitly state: users must sign in with Internet Identity, and only the Internet Identity linked to Google account grandzbee@gmail.com is permitted as admin; avoid any wording implying Google OAuth login. Continue to rely on the existing authorization flow via useIsAdmin (actor.isCallerAdmin) for gating. Use existing shadcn-ui Card/Button components already used on this screen. Verify the component's usage instructions before implementing."
+          "description": "Adjust the Initial Admin Setup UI to align with the new initializeAdminAccess-based flow: ensure submission uses the updated hook, remove/avoid the circular-lockout copy that tells users to contact an administrator after a reset, and present actionable guidance when credentials are already configured (e.g., prompt to use the admin login form). Keep the existing success state and reload behavior, ensuring it triggers after caches are invalidated/refetched. Compose existing shadcn-ui components (Card, Alert, Button, Input) without modifying immutablePaths; verify the component's usage instructions before implementing."
         }
       ]
     }

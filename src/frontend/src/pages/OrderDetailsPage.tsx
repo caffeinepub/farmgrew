@@ -4,11 +4,13 @@ import { navigate } from '../router/navigation';
 import TopNav from '../components/landing/TopNav';
 import Footer from '../components/landing/Footer';
 import Container from '../components/layout/Container';
+import OrderTrackingTimeline from '../components/orders/OrderTrackingTimeline';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Loader2, ArrowLeft } from 'lucide-react';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Loader2, ArrowLeft, AlertCircle, CheckCircle2, Clock } from 'lucide-react';
 import { OrderStatus } from '../backend';
 import { getProductImageUrl, getProductImageFallback } from '../lib/productImage';
 
@@ -41,6 +43,46 @@ export default function OrderDetailsPage({ orderId }: OrderDetailsPageProps) {
       hour: '2-digit',
       minute: '2-digit',
     });
+  };
+
+  const getPaymentStatusDisplay = () => {
+    if (!order) return null;
+
+    if (order.paymentStatus.__kind__ === 'completed') {
+      return (
+        <Alert className="bg-green-50 border-green-200 dark:bg-green-950 dark:border-green-800">
+          <CheckCircle2 className="h-4 w-4 text-green-600" />
+          <AlertTitle>Payment Completed</AlertTitle>
+          <AlertDescription>
+            Payment of ₹{(Number(order.paymentStatus.completed.amountCents) / 100).toFixed(2)} received on{' '}
+            {formatDate(order.paymentStatus.completed.timestamp)}
+          </AlertDescription>
+        </Alert>
+      );
+    }
+
+    if (order.paymentStatus.__kind__ === 'failed') {
+      return (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Payment Failed</AlertTitle>
+          <AlertDescription>
+            {order.paymentStatus.failed.reason}
+          </AlertDescription>
+        </Alert>
+      );
+    }
+
+    // Pending payment
+    return (
+      <Alert>
+        <Clock className="h-4 w-4" />
+        <AlertTitle>Payment Pending</AlertTitle>
+        <AlertDescription>
+          This order is awaiting payment. Please complete the payment to confirm your order.
+        </AlertDescription>
+      </Alert>
+    );
   };
 
   if (isLoading) {
@@ -107,44 +149,50 @@ export default function OrderDetailsPage({ orderId }: OrderDetailsPageProps) {
                     </Badge>
                   </div>
                 </CardHeader>
-                <CardContent>
-                  <h3 className="font-semibold mb-4">Order Items</h3>
-                  <div className="space-y-4">
-                    {order.items.map(([productId, quantity]) => {
-                      const product = getProductDetails(productId);
-                      if (!product) return null;
+                <CardContent className="space-y-6">
+                  {getPaymentStatusDisplay()}
 
-                      return (
-                        <div key={productId.toString()} className="flex gap-4">
-                          <img
-                            src={getProductImageUrl(product.name)}
-                            alt={product.name}
-                            className="w-20 h-20 object-cover rounded-lg"
-                            onError={(e) => {
-                              e.currentTarget.src = getProductImageFallback();
-                            }}
-                          />
-                          <div className="flex-1">
-                            <h4 className="font-semibold">{product.name}</h4>
-                            <p className="text-sm text-muted-foreground">{product.category}</p>
-                            <p className="text-sm text-muted-foreground mt-1">
-                              Quantity: {Number(quantity)}
-                            </p>
+                  <div>
+                    <h3 className="font-semibold mb-4">Order Items</h3>
+                    <div className="space-y-4">
+                      {order.items.map(([productId, quantity]) => {
+                        const product = getProductDetails(productId);
+                        if (!product) return null;
+
+                        return (
+                          <div key={productId.toString()} className="flex gap-4">
+                            <img
+                              src={getProductImageUrl(product.name)}
+                              alt={product.name}
+                              className="w-20 h-20 object-cover rounded-lg"
+                              onError={(e) => {
+                                e.currentTarget.src = getProductImageFallback();
+                              }}
+                            />
+                            <div className="flex-1">
+                              <h4 className="font-semibold">{product.name}</h4>
+                              <p className="text-sm text-muted-foreground">{product.category}</p>
+                              <p className="text-sm text-muted-foreground mt-1">
+                                Quantity: {Number(quantity)}
+                              </p>
+                            </div>
+                            <div className="text-right">
+                              <p className="font-semibold">
+                                ₹{((Number(product.priceCents) * Number(quantity)) / 100).toFixed(2)}
+                              </p>
+                              <p className="text-sm text-muted-foreground">
+                                ₹{(Number(product.priceCents) / 100).toFixed(2)} each
+                              </p>
+                            </div>
                           </div>
-                          <div className="text-right">
-                            <p className="font-semibold">
-                              ₹{((Number(product.priceCents) * Number(quantity)) / 100).toFixed(2)}
-                            </p>
-                            <p className="text-sm text-muted-foreground">
-                              ₹{(Number(product.priceCents) / 100).toFixed(2)} each
-                            </p>
-                          </div>
-                        </div>
-                      );
-                    })}
+                        );
+                      })}
+                    </div>
                   </div>
                 </CardContent>
               </Card>
+
+              <OrderTrackingTimeline order={order} />
             </div>
 
             <div>
@@ -172,6 +220,16 @@ export default function OrderDetailsPage({ orderId }: OrderDetailsPageProps) {
                         {formatDate(order.pickupTime)}
                       </p>
                     </div>
+                  )}
+
+                  {order.paymentStatus.__kind__ === 'pending' && (
+                    <Button
+                      onClick={() => navigate('/cart')}
+                      variant="outline"
+                      className="w-full"
+                    >
+                      Retry Payment
+                    </Button>
                   )}
 
                   <Button

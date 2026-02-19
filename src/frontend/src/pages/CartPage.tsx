@@ -1,6 +1,7 @@
 import { useCart, useRemoveFromCart, useUpdateCartItem } from '../hooks/useCart';
 import { useProducts } from '../hooks/useProducts';
 import { usePlaceOrder } from '../hooks/useOrders';
+import { useIsStripeConfigured, useCreateCheckoutSession } from '../hooks/useStripe';
 import { navigate } from '../router/navigation';
 import TopNav from '../components/landing/TopNav';
 import Footer from '../components/landing/Footer';
@@ -8,15 +9,23 @@ import Container from '../components/layout/Container';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Loader2, Trash2, ShoppingBag, Minus, Plus } from 'lucide-react';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Loader2, Trash2, ShoppingBag, Minus, Plus, AlertCircle } from 'lucide-react';
 import { getProductImageUrl, getProductImageFallback } from '../lib/productImage';
+import type { ShoppingItem } from '../backend';
+import { useState } from 'react';
 
 export default function CartPage() {
   const { data: cart, isLoading: cartLoading } = useCart();
   const { data: allProducts } = useProducts();
+  const { data: isStripeConfigured, isLoading: stripeConfigLoading } = useIsStripeConfigured();
   const removeFromCart = useRemoveFromCart();
   const updateCartItem = useUpdateCartItem();
   const placeOrder = usePlaceOrder();
+  const createCheckoutSession = useCreateCheckoutSession();
+
+  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+  const [paymentError, setPaymentError] = useState<string | null>(null);
 
   const cartItems = cart?.items || [];
 
@@ -49,17 +58,56 @@ export default function CartPage() {
     }
   };
 
-  const handlePlaceOrder = async () => {
+  const handleCheckout = async () => {
+    setPaymentError(null);
+    setIsProcessingPayment(true);
+
     try {
+      // Check if Stripe is configured
+      if (!isStripeConfigured) {
+        setPaymentError('Payment system is not configured. Please contact the administrator.');
+        setIsProcessingPayment(false);
+        return;
+      }
+
+      // Place the order first to get orderId
       const orderId = await placeOrder.mutateAsync(null);
-      navigate(`/orders/${orderId}`);
+
+      // Build shopping items for Stripe
+      const shoppingItems: ShoppingItem[] = cartItems.map(([productId, quantity]) => {
+        const product = getProductDetails(productId);
+        if (!product) throw new Error('Product not found');
+
+        return {
+          productName: product.name,
+          productDescription: product.description,
+          priceInCents: product.priceCents,
+          quantity,
+          currency: 'inr',
+        };
+      });
+
+      // Create Stripe checkout session
+      const session = await createCheckoutSession.mutateAsync({
+        items: shoppingItems,
+        orderId: orderId.toString(),
+      });
+
+      // Validate session URL
+      if (!session?.url) {
+        throw new Error('Stripe session missing url');
+      }
+
+      // Redirect to Stripe checkout (do NOT use router navigation)
+      window.location.href = session.url;
     } catch (error: any) {
-      console.error('Failed to place order:', error);
-      alert(error.message || 'Failed to place order. Please try again.');
+      console.error('Checkout failed:', error);
+      setPaymentError(error.message || 'Failed to start checkout. Please try again.');
+      setIsProcessingPayment(false);
     }
   };
 
-  if (cartLoading) {
+  if (cartLoading || stripeConfigLoading) {
     return (
       <div className="min-h-screen flex flex-col">
         <TopNav />
@@ -176,6 +224,24 @@ export default function CartPage() {
                     <CardTitle>Order Summary</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
+                    {paymentError && (
+                      <Alert variant="destructive">
+                        <AlertCircle className="h-4 w-4" />
+                        <AlertTitle>Payment Error</AlertTitle>
+                        <AlertDescription>{paymentError}</AlertDescription>
+                      </Alert>
+                    )}
+
+                    {!isStripeConfigured && (
+                      <Alert>
+                        <AlertCircle className="h-4 w-4" />
+                        <AlertTitle>Payment Unavailable</AlertTitle>
+                        <AlertDescription>
+                          Payment system is not configured. Please contact support.
+                        </AlertDescription>
+                      </Alert>
+                    )}
+
                     <div className="space-y-2">
                       <div className="flex justify-between text-sm">
                         <span className="text-muted-foreground">Subtotal</span>
@@ -187,18 +253,18 @@ export default function CartPage() {
                       </div>
                     </div>
                     <Button
-                      onClick={handlePlaceOrder}
-                      disabled={placeOrder.isPending}
+                      onClick={handleCheckout}
+                      disabled={isProcessingPayment || !isStripeConfigured}
                       className="w-full"
                       size="lg"
                     >
-                      {placeOrder.isPending ? (
+                      {isProcessingPayment ? (
                         <>
                           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Placing Order...
+                          Starting Payment...
                         </>
                       ) : (
-                        'Place Order'
+                        'Proceed to Payment'
                       )}
                     </Button>
                     <Button

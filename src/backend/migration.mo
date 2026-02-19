@@ -1,55 +1,22 @@
-import Map "mo:core/Map";
-import Nat "mo:core/Nat";
-import Storage "blob-storage/Storage";
+import AccessControl "authorization/access-control";
 
 module {
-  type OldProduct = {
-    id : Nat;
-    name : Text;
-    category : Text;
-    unitsPerPack : Nat;
-    unitsPerPrice : Nat;
-    priceCents : Nat;
-    imageUrl : ?Text;
+  // Types only used for migration
+  type OldActor = {
+    _adminCredentials : ?{ username : Text; password : Text };
   };
 
-  type NewProduct = {
-    id : Nat;
-    name : Text;
-    description : Text;
-    priceCents : Nat;
-    category : Text;
-    image : ?Storage.ExternalBlob;
+  type NewActor = {
+    _adminCredentials : ?{ username : Text; password : Text };
   };
 
-  public type OldActor = {
-    products : Map.Map<Nat, OldProduct>;
-    nextProductId : Nat;
-    seedProducts : [OldProduct];
-  };
-
-  public type NewActor = {
-    products : Map.Map<Nat, NewProduct>;
-    nextProductId : Nat;
-  };
-
+  /// Admin full-reset migration function.
+  /// * Resets stored admin credentials to null.
+  /// * Resets access control state to fresh state with no assignments.
   public func run(old : OldActor) : NewActor {
-    let newProducts = old.products.map<Nat, OldProduct, NewProduct>(
-      func(_id, oldProduct) {
-        {
-          id = oldProduct.id;
-          name = oldProduct.name;
-          description = "No description available";
-          priceCents = oldProduct.priceCents;
-          category = oldProduct.category;
-          image = null;
-        };
-      }
-    );
     {
-      products = newProducts;
-      nextProductId = old.nextProductId;
+      old with
+      _adminCredentials = null;
     };
   };
 };
-

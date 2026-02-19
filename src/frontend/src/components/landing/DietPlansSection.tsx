@@ -31,18 +31,6 @@ export default function DietPlansSection({ selectedPlan, onSelectPlan }: DietPla
             </p>
           </div>
 
-          {/* Image */}
-          <div className="max-w-md mx-auto animate-fade-in">
-            <div className="relative rounded-3xl overflow-hidden shadow-soft-lg">
-              <img
-                src="/assets/generated/icon-diet-plans-v3.dim_1024x1024.png"
-                alt="Diet Plans"
-                className="w-full h-auto"
-              />
-              <div className="absolute inset-0 bg-gradient-to-tr from-brand-green/10 via-transparent to-brand-yellow/10 pointer-events-none" />
-            </div>
-          </div>
-
           {/* Diet Plans Grid */}
           <div className="grid md:grid-cols-3 gap-6 lg:gap-8">
             {dietPlans.map((plan) => {
