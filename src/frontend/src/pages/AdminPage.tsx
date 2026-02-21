@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { useAllProducts, useCreateProduct, useUpdateProduct, useDeleteProduct } from '../hooks/useAdminProducts';
 import { useIsStripeConfigured, useSetStripeConfiguration } from '../hooks/useStripe';
-import { ExternalBlob, type StripeConfiguration } from '../backend';
+import { useAdminOrders, useMarkOrderAsPaid } from '../hooks/useOrders';
+import { ExternalBlob, PaymentMethod, type StripeConfiguration, type Order } from '../backend';
+import { navigate } from '../router/navigation';
 import TopNav from '../components/landing/TopNav';
 import Footer from '../components/landing/Footer';
 import Container from '../components/layout/Container';
@@ -12,6 +14,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Badge } from '@/components/ui/badge';
 import {
   Select,
   SelectContent,
@@ -47,7 +50,8 @@ import {
 } from '@/components/ui/table';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Loader2, Plus, Pencil, Trash2, Image as ImageIcon, CreditCard, AlertCircle } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Loader2, Plus, Pencil, Trash2, Image as ImageIcon, CreditCard, AlertCircle, Package, Banknote, CheckCircle, FileText } from 'lucide-react';
 import { toast } from 'sonner';
 import type { Product } from '../backend';
 
@@ -75,10 +79,12 @@ interface StripeFormData {
 export default function AdminPage() {
   const { data: products, isLoading, error } = useAllProducts();
   const { data: isStripeConfigured, isLoading: stripeConfigLoading } = useIsStripeConfigured();
+  const { data: orders, isLoading: ordersLoading } = useAdminOrders();
   const createProduct = useCreateProduct();
   const updateProduct = useUpdateProduct();
   const deleteProduct = useDeleteProduct();
   const setStripeConfiguration = useSetStripeConfiguration();
+  const markOrderAsPaid = useMarkOrderAsPaid();
 
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
@@ -296,9 +302,42 @@ export default function AdminPage() {
     }
   };
 
+  const handleMarkAsPaid = async (orderId: bigint) => {
+    try {
+      await markOrderAsPaid.mutateAsync(orderId);
+      toast.success('Order marked as paid successfully');
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to mark order as paid');
+    }
+  };
+
+  const handleViewKOT = (orderId: bigint) => {
+    navigate(`/admin/kot/${orderId.toString()}`);
+  };
+
   const formatPrice = (priceCents: bigint): string => {
     return `₹${(Number(priceCents) / 100).toFixed(2)}`;
   };
+
+  const formatDate = (timestamp: bigint) => {
+    const date = new Date(Number(timestamp) / 1_000_000);
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  };
+
+  const codOrders = orders?.filter(
+    (order) =>
+      order.paymentMethod === PaymentMethod.cashOnDelivery &&
+      order.paymentStatus.__kind__ === 'pending'
+  ) || [];
+
+  // All orders for KOT viewing
+  const allOrders = orders || [];
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
@@ -311,7 +350,7 @@ export default function AdminPage() {
             <div>
               <h1 className="text-4xl font-bold text-foreground mb-2">Admin Dashboard</h1>
               <p className="text-muted-foreground">
-                Manage products, Stripe configuration, and admin access
+                Manage products, orders, Stripe configuration, and admin access
               </p>
             </div>
 
@@ -370,6 +409,194 @@ export default function AdminPage() {
               </CardContent>
             </Card>
 
+            {/* Orders Management Section with Tabs */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Orders Management</CardTitle>
+                <CardDescription>
+                  View all orders and manage COD payments
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Tabs defaultValue="all" className="w-full">
+                  <TabsList className="grid w-full grid-cols-2">
+                    <TabsTrigger value="all">All Orders</TabsTrigger>
+                    <TabsTrigger value="cod">Pending COD</TabsTrigger>
+                  </TabsList>
+
+                  {/* All Orders Tab */}
+                  <TabsContent value="all" className="space-y-4">
+                    {ordersLoading ? (
+                      <div className="flex items-center gap-2 text-muted-foreground py-8">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        <span>Loading orders...</span>
+                      </div>
+                    ) : allOrders.length === 0 ? (
+                      <Alert>
+                        <Package className="h-4 w-4" />
+                        <AlertTitle>No orders yet</AlertTitle>
+                        <AlertDescription>
+                          Orders will appear here once customers start placing them.
+                        </AlertDescription>
+                      </Alert>
+                    ) : (
+                      <div className="rounded-md border">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Order ID</TableHead>
+                              <TableHead>Date</TableHead>
+                              <TableHead>Items</TableHead>
+                              <TableHead>Total</TableHead>
+                              <TableHead>Payment</TableHead>
+                              <TableHead>Status</TableHead>
+                              <TableHead className="text-right">Actions</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {allOrders.map((order) => (
+                              <TableRow key={order.id.toString()}>
+                                <TableCell className="font-medium">
+                                  #{order.id.toString()}
+                                </TableCell>
+                                <TableCell>{formatDate(order.timestamp)}</TableCell>
+                                <TableCell>
+                                  {order.items.length} item{order.items.length !== 1 ? 's' : ''}
+                                </TableCell>
+                                <TableCell className="font-semibold">
+                                  {formatPrice(order.totalPriceCents)}
+                                </TableCell>
+                                <TableCell>
+                                  <div className="flex flex-col gap-1">
+                                    <Badge variant="outline" className="w-fit">
+                                      {order.paymentMethod === PaymentMethod.cashOnDelivery ? (
+                                        <span className="flex items-center gap-1">
+                                          <Banknote className="h-3 w-3" />
+                                          COD
+                                        </span>
+                                      ) : (
+                                        <span className="flex items-center gap-1">
+                                          <CreditCard className="h-3 w-3" />
+                                          Card
+                                        </span>
+                                      )}
+                                    </Badge>
+                                    <span className="text-xs text-muted-foreground">
+                                      {order.paymentStatus.__kind__ === 'completed' ? 'Paid' : 'Pending'}
+                                    </span>
+                                  </div>
+                                </TableCell>
+                                <TableCell>
+                                  <Badge
+                                    variant={
+                                      order.status === 'completed'
+                                        ? 'default'
+                                        : order.status === 'confirmed'
+                                        ? 'secondary'
+                                        : 'outline'
+                                    }
+                                  >
+                                    {order.status}
+                                  </Badge>
+                                </TableCell>
+                                <TableCell className="text-right">
+                                  <Button
+                                    onClick={() => handleViewKOT(order.id)}
+                                    variant="outline"
+                                    size="sm"
+                                    className="gap-2"
+                                  >
+                                    <FileText className="h-4 w-4" />
+                                    View KOT
+                                  </Button>
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    )}
+                  </TabsContent>
+
+                  {/* Pending COD Tab */}
+                  <TabsContent value="cod" className="space-y-4">
+                    {ordersLoading ? (
+                      <div className="flex items-center gap-2 text-muted-foreground py-8">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        <span>Loading orders...</span>
+                      </div>
+                    ) : codOrders.length === 0 ? (
+                      <Alert>
+                        <Package className="h-4 w-4" />
+                        <AlertTitle>No pending COD orders</AlertTitle>
+                        <AlertDescription>
+                          All COD orders have been paid or there are no COD orders yet.
+                        </AlertDescription>
+                      </Alert>
+                    ) : (
+                      <div className="space-y-4">
+                        {codOrders.map((order) => (
+                          <Card key={order.id.toString()} className="border-2">
+                            <CardContent className="pt-6">
+                              <div className="flex items-start justify-between">
+                                <div className="space-y-1">
+                                  <div className="flex items-center gap-2">
+                                    <h3 className="font-semibold">Order #{order.id.toString()}</h3>
+                                    <Badge variant="outline" className="flex items-center gap-1">
+                                      <Banknote className="h-3 w-3" />
+                                      COD
+                                    </Badge>
+                                  </div>
+                                  <p className="text-sm text-muted-foreground">
+                                    {formatDate(order.timestamp)}
+                                  </p>
+                                  <p className="text-sm">
+                                    {order.items.length} item{order.items.length !== 1 ? 's' : ''}
+                                  </p>
+                                  <p className="text-lg font-semibold text-primary">
+                                    {formatPrice(order.totalPriceCents)}
+                                  </p>
+                                </div>
+                                <div className="flex gap-2">
+                                  <Button
+                                    onClick={() => handleViewKOT(order.id)}
+                                    variant="outline"
+                                    size="sm"
+                                    className="gap-2"
+                                  >
+                                    <FileText className="h-4 w-4" />
+                                    View KOT
+                                  </Button>
+                                  <Button
+                                    onClick={() => handleMarkAsPaid(order.id)}
+                                    disabled={markOrderAsPaid.isPending}
+                                    size="sm"
+                                    className="gap-2"
+                                  >
+                                    {markOrderAsPaid.isPending ? (
+                                      <>
+                                        <Loader2 className="h-4 w-4 animate-spin" />
+                                        Processing...
+                                      </>
+                                    ) : (
+                                      <>
+                                        <CheckCircle className="h-4 w-4" />
+                                        Mark as Paid
+                                      </>
+                                    )}
+                                  </Button>
+                                </div>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
+                    )}
+                  </TabsContent>
+                </Tabs>
+              </CardContent>
+            </Card>
+
             {/* Products Section */}
             <Card>
               <CardHeader>
@@ -388,31 +615,28 @@ export default function AdminPage() {
               </CardHeader>
               <CardContent>
                 {isLoading ? (
-                  <div className="flex items-center justify-center py-12">
+                  <div className="flex items-center justify-center py-8">
                     <Loader2 className="h-8 w-8 animate-spin text-primary" />
                   </div>
                 ) : error ? (
                   <Alert variant="destructive">
                     <AlertCircle className="h-4 w-4" />
-                    <AlertTitle>Error loading products</AlertTitle>
+                    <AlertTitle>Error</AlertTitle>
                     <AlertDescription>
-                      {error instanceof Error ? error.message : 'Failed to load products'}
+                      Failed to load products. Please try again.
                     </AlertDescription>
                   </Alert>
                 ) : !products || products.length === 0 ? (
-                  <div className="text-center py-12">
-                    <p className="text-muted-foreground mb-4">No products yet</p>
-                    <Button onClick={openCreateDialog} variant="outline" className="gap-2">
-                      <Plus className="h-4 w-4" />
-                      Add Your First Product
-                    </Button>
+                  <div className="text-center py-8">
+                    <Package className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                    <p className="text-muted-foreground">No products yet. Add your first product to get started.</p>
                   </div>
                 ) : (
                   <div className="rounded-md border">
                     <Table>
                       <TableHeader>
                         <TableRow>
-                          <TableHead className="w-16">Image</TableHead>
+                          <TableHead>Image</TableHead>
                           <TableHead>Name</TableHead>
                           <TableHead>Category</TableHead>
                           <TableHead>Price</TableHead>
@@ -427,10 +651,10 @@ export default function AdminPage() {
                                 <img
                                   src={product.image.getDirectURL()}
                                   alt={product.name}
-                                  className="w-12 h-12 object-cover rounded"
+                                  className="h-12 w-12 object-cover rounded"
                                 />
                               ) : (
-                                <div className="w-12 h-12 bg-muted rounded flex items-center justify-center">
+                                <div className="h-12 w-12 bg-muted rounded flex items-center justify-center">
                                   <ImageIcon className="h-6 w-6 text-muted-foreground" />
                                 </div>
                               )}
@@ -439,20 +663,20 @@ export default function AdminPage() {
                             <TableCell>{product.category}</TableCell>
                             <TableCell>{formatPrice(product.priceCents)}</TableCell>
                             <TableCell className="text-right">
-                              <div className="flex items-center justify-end gap-2">
+                              <div className="flex justify-end gap-2">
                                 <Button
-                                  variant="ghost"
-                                  size="sm"
                                   onClick={() => openEditDialog(product)}
+                                  variant="outline"
+                                  size="sm"
                                 >
                                   <Pencil className="h-4 w-4" />
                                 </Button>
                                 <Button
-                                  variant="ghost"
-                                  size="sm"
                                   onClick={() => handleDeleteClick(product)}
+                                  variant="outline"
+                                  size="sm"
                                 >
-                                  <Trash2 className="h-4 w-4 text-destructive" />
+                                  <Trash2 className="h-4 w-4" />
                                 </Button>
                               </div>
                             </TableCell>
@@ -476,21 +700,18 @@ export default function AdminPage() {
           <DialogHeader>
             <DialogTitle>{editingProduct ? 'Edit Product' : 'Add New Product'}</DialogTitle>
             <DialogDescription>
-              {editingProduct ? 'Update product information' : 'Add a new product to your catalog'}
+              {editingProduct ? 'Update product information' : 'Fill in the details to create a new product'}
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4">
+          <div className="space-y-4 py-4">
             <div className="space-y-2">
               <Label htmlFor="name">Product Name</Label>
               <Input
                 id="name"
                 value={formData.name}
-                onChange={(e) => {
-                  setFormData({ ...formData, name: e.target.value });
-                  setFormErrors({ ...formErrors, name: undefined });
-                }}
-                placeholder="e.g., Fresh Carrots"
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                placeholder="Enter product name"
               />
               {formErrors.name && (
                 <p className="text-sm text-destructive">{formErrors.name}</p>
@@ -502,11 +723,8 @@ export default function AdminPage() {
               <Textarea
                 id="description"
                 value={formData.description}
-                onChange={(e) => {
-                  setFormData({ ...formData, description: e.target.value });
-                  setFormErrors({ ...formErrors, description: undefined });
-                }}
-                placeholder="Describe the product..."
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                placeholder="Enter product description"
                 rows={3}
               />
               {formErrors.description && (
@@ -514,49 +732,41 @@ export default function AdminPage() {
               )}
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="priceCents">Price (₹)</Label>
-                <Input
-                  id="priceCents"
-                  type="number"
-                  step="0.01"
-                  value={formData.priceCents}
-                  onChange={(e) => {
-                    setFormData({ ...formData, priceCents: e.target.value });
-                    setFormErrors({ ...formErrors, priceCents: undefined });
-                  }}
-                  placeholder="0.00"
-                />
-                {formErrors.priceCents && (
-                  <p className="text-sm text-destructive">{formErrors.priceCents}</p>
-                )}
-              </div>
+            <div className="space-y-2">
+              <Label htmlFor="priceCents">Price (₹)</Label>
+              <Input
+                id="priceCents"
+                type="number"
+                step="0.01"
+                value={formData.priceCents}
+                onChange={(e) => setFormData({ ...formData, priceCents: e.target.value })}
+                placeholder="0.00"
+              />
+              {formErrors.priceCents && (
+                <p className="text-sm text-destructive">{formErrors.priceCents}</p>
+              )}
+            </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="category">Category</Label>
-                <Select
-                  value={formData.category}
-                  onValueChange={(value) => {
-                    setFormData({ ...formData, category: value });
-                    setFormErrors({ ...formErrors, category: undefined });
-                  }}
-                >
-                  <SelectTrigger id="category">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {CATEGORIES.map((cat) => (
-                      <SelectItem key={cat} value={cat}>
-                        {cat}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {formErrors.category && (
-                  <p className="text-sm text-destructive">{formErrors.category}</p>
-                )}
-              </div>
+            <div className="space-y-2">
+              <Label htmlFor="category">Category</Label>
+              <Select
+                value={formData.category}
+                onValueChange={(value) => setFormData({ ...formData, category: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a category" />
+                </SelectTrigger>
+                <SelectContent>
+                  {CATEGORIES.map((cat) => (
+                    <SelectItem key={cat} value={cat}>
+                      {cat}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {formErrors.category && (
+                <p className="text-sm text-destructive">{formErrors.category}</p>
+              )}
             </div>
 
             <div className="space-y-2">
@@ -575,20 +785,20 @@ export default function AdminPage() {
                   <img
                     src={imagePreview}
                     alt="Preview"
-                    className="w-full h-48 object-cover rounded-lg"
+                    className="h-32 w-32 object-cover rounded border"
                   />
                 </div>
               )}
               {uploadProgress > 0 && uploadProgress < 100 && (
                 <div className="mt-2">
-                  <div className="flex items-center gap-2">
-                    <div className="flex-1 bg-muted rounded-full h-2">
-                      <div
-                        className="bg-primary h-2 rounded-full transition-all"
-                        style={{ width: `${uploadProgress}%` }}
-                      />
-                    </div>
-                    <span className="text-sm text-muted-foreground">{uploadProgress}%</span>
+                  <div className="text-sm text-muted-foreground mb-1">
+                    Uploading: {uploadProgress}%
+                  </div>
+                  <div className="w-full bg-muted rounded-full h-2">
+                    <div
+                      className="bg-primary h-2 rounded-full transition-all"
+                      style={{ width: `${uploadProgress}%` }}
+                    />
                   </div>
                 </div>
               )}
@@ -596,7 +806,13 @@ export default function AdminPage() {
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsFormOpen(false)}>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setIsFormOpen(false);
+                resetForm();
+              }}
+            >
               Cancel
             </Button>
             <Button
@@ -611,7 +827,7 @@ export default function AdminPage() {
               ) : editingProduct ? (
                 'Update Product'
               ) : (
-                'Add Product'
+                'Create Product'
               )}
             </Button>
           </DialogFooter>
@@ -622,9 +838,9 @@ export default function AdminPage() {
       <AlertDialog open={!!deleteConfirmProduct} onOpenChange={(open) => !open && handleDeleteCancel()}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Product</AlertDialogTitle>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete "{deleteConfirmProduct?.name}"? This action cannot be undone.
+              This will permanently delete "{deleteConfirmProduct?.name}". This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -652,21 +868,20 @@ export default function AdminPage() {
           <DialogHeader>
             <DialogTitle>Configure Stripe</DialogTitle>
             <DialogDescription>
-              Set up Stripe payment processing for your store
+              Enter your Stripe credentials to enable payment processing
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4">
+          <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="secretKey">Stripe Secret Key</Label>
+              <Label htmlFor="secretKey">Secret Key</Label>
               <Input
                 id="secretKey"
                 type="password"
                 value={stripeFormData.secretKey}
-                onChange={(e) => {
-                  setStripeFormData({ ...stripeFormData, secretKey: e.target.value });
-                  setStripeFormErrors({ ...stripeFormErrors, secretKey: undefined });
-                }}
+                onChange={(e) =>
+                  setStripeFormData({ ...stripeFormData, secretKey: e.target.value })
+                }
                 placeholder="sk_test_..."
               />
               {stripeFormErrors.secretKey && (
@@ -675,27 +890,33 @@ export default function AdminPage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="allowedCountries">Allowed Countries (comma-separated)</Label>
+              <Label htmlFor="allowedCountries">Allowed Countries</Label>
               <Input
                 id="allowedCountries"
                 value={stripeFormData.allowedCountries}
-                onChange={(e) => {
-                  setStripeFormData({ ...stripeFormData, allowedCountries: e.target.value });
-                  setStripeFormErrors({ ...stripeFormErrors, allowedCountries: undefined });
-                }}
-                placeholder="IN, US, GB"
+                onChange={(e) =>
+                  setStripeFormData({ ...stripeFormData, allowedCountries: e.target.value })
+                }
+                placeholder="IN, US, GB (comma-separated)"
               />
+              <p className="text-xs text-muted-foreground">
+                Enter country codes separated by commas (e.g., IN, US, GB)
+              </p>
               {stripeFormErrors.allowedCountries && (
                 <p className="text-sm text-destructive">{stripeFormErrors.allowedCountries}</p>
               )}
-              <p className="text-sm text-muted-foreground">
-                Enter country codes (e.g., IN for India, US for United States)
-              </p>
             </div>
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsStripeFormOpen(false)}>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setIsStripeFormOpen(false);
+                setStripeFormData({ secretKey: '', allowedCountries: 'IN' });
+                setStripeFormErrors({});
+              }}
+            >
               Cancel
             </Button>
             <Button

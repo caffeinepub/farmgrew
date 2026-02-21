@@ -1,7 +1,8 @@
+import React from 'react';
 import { useInternetIdentity } from '../../hooks/useInternetIdentity';
 import { useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
-import { LogIn, LogOut, Loader2 } from 'lucide-react';
+import { Loader2, LogIn, LogOut } from 'lucide-react';
 
 export default function LoginButton() {
   const { login, clear, loginStatus, identity } = useInternetIdentity();
@@ -32,22 +33,24 @@ export default function LoginButton() {
       onClick={handleAuth}
       disabled={disabled}
       variant={isAuthenticated ? 'outline' : 'default'}
-      size="sm"
-      className="gap-2"
+      size="default"
+      className={`font-semibold px-6 py-2 rounded-lg transition-all duration-200 ${
+        !isAuthenticated ? 'bg-primary hover:bg-primary/90 text-primary-foreground' : ''
+      }`}
     >
-      {loginStatus === 'logging-in' ? (
+      {disabled ? (
         <>
-          <Loader2 className="h-4 w-4 animate-spin" />
+          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
           Logging in...
         </>
       ) : isAuthenticated ? (
         <>
-          <LogOut className="h-4 w-4" />
+          <LogOut className="mr-2 h-4 w-4" />
           Logout
         </>
       ) : (
         <>
-          <LogIn className="h-4 w-4" />
+          <LogIn className="mr-2 h-4 w-4" />
           Login
         </>
       )}

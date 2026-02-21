@@ -1,5 +1,4 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { InternetIdentityProvider } from './hooks/useInternetIdentity';
 import { usePathname } from './router/usePathname';
 import LandingPage from './sections/LandingPage';
 import ShopPage from './pages/ShopPage';
@@ -10,25 +9,27 @@ import OrderDetailsPage from './pages/OrderDetailsPage';
 import AdminPage from './pages/AdminPage';
 import PaymentSuccessPage from './pages/PaymentSuccessPage';
 import PaymentFailurePage from './pages/PaymentFailurePage';
+import KOTPage from './pages/KOTPage';
 import RequireAuth from './components/auth/RequireAuth';
 import RequireRegistration from './components/auth/RequireRegistration';
 import RequireAdmin from './components/auth/RequireAdmin';
+import { Toaster } from '@/components/ui/sonner';
 
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
+      staleTime: 1000 * 60 * 5,
       refetchOnWindowFocus: false,
-      retry: 1,
     },
   },
 });
 
-function AppRouter() {
+function Router() {
   const pathname = usePathname();
 
-  // Parse order ID from /orders/:id
-  const orderIdMatch = pathname.match(/^\/orders\/(\d+)$/);
-  const orderId = orderIdMatch ? orderIdMatch[1] : null;
+  if (pathname === '/') {
+    return <LandingPage />;
+  }
 
   if (pathname === '/shop') {
     return <ShopPage />;
@@ -52,7 +53,7 @@ function AppRouter() {
     );
   }
 
-  if (pathname === '/orders' && !orderId) {
+  if (pathname === '/orders') {
     return (
       <RequireAuth>
         <RequireRegistration>
@@ -62,13 +63,30 @@ function AppRouter() {
     );
   }
 
-  if (orderId) {
+  if (pathname.startsWith('/orders/')) {
+    const orderId = pathname.replace('/orders/', '');
     return (
       <RequireAuth>
         <RequireRegistration>
           <OrderDetailsPage orderId={orderId} />
         </RequireRegistration>
       </RequireAuth>
+    );
+  }
+
+  if (pathname === '/admin') {
+    return (
+      <RequireAdmin>
+        <AdminPage />
+      </RequireAdmin>
+    );
+  }
+
+  if (pathname.startsWith('/admin/kot/')) {
+    return (
+      <RequireAdmin>
+        <KOTPage />
+      </RequireAdmin>
     );
   }
 
@@ -92,28 +110,14 @@ function AppRouter() {
     );
   }
 
-  if (pathname === '/admin') {
-    return (
-      <RequireAuth>
-        <RequireAdmin>
-          <AdminPage />
-        </RequireAdmin>
-      </RequireAuth>
-    );
-  }
-
-  // Default route
   return <LandingPage />;
 }
 
-function App() {
+export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <InternetIdentityProvider>
-        <AppRouter />
-      </InternetIdentityProvider>
+      <Router />
+      <Toaster />
     </QueryClientProvider>
   );
 }
-
-export default App;

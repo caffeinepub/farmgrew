@@ -13,9 +13,9 @@ import Storage "blob-storage/Storage";
 import Stripe "stripe/stripe";
 import MixinStorage "blob-storage/Mixin";
 import MixinAuthorization "authorization/MixinAuthorization";
-import Migration "migration";
 
-(with migration = Migration.run)
+
+
 actor {
   include MixinStorage();
 
@@ -47,6 +47,11 @@ actor {
     #canceled;
   };
 
+  public type PaymentMethod = {
+    #stripe;
+    #cashOnDelivery;
+  };
+
   public type PaymentStatus = {
     #pending;
     #completed : {
@@ -73,9 +78,11 @@ actor {
     timestamp : Time.Time;
     pickupTime : ?Time.Time;
     tracking : [OrderTrackingEntry];
+    paymentMethod : PaymentMethod;
   };
 
   stable var _adminCredentials : ?AdminCredentials = null;
+
   let accessControlState = AccessControl.initState();
   include MixinAuthorization(accessControlState);
 
@@ -415,7 +422,7 @@ actor {
     carts.remove(caller);
   };
 
-  public shared ({ caller }) func placeOrder(pickupTime : ?Time.Time) : async Nat {
+  public shared ({ caller }) func placeOrder(paymentMethod : PaymentMethod, pickupTime : ?Time.Time) : async Nat {
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
       Runtime.trap("Unauthorized: Only authenticated users can place orders");
     };
@@ -463,16 +470,22 @@ actor {
       },
     ];
 
+    let initialPaymentStatus : PaymentStatus = switch (paymentMethod) {
+      case (#cashOnDelivery) { #pending };
+      case (#stripe) { #pending };
+    };
+
     let order : Order = {
       id = orderId;
       customer = caller;
       items = cartItems;
       totalPriceCents;
       status = #pending;
-      paymentStatus = #pending;
+      paymentStatus = initialPaymentStatus;
       timestamp = Time.now();
       pickupTime;
       tracking = initialTracking;
+      paymentMethod;
     };
 
     orders.add(orderId, order);
@@ -493,6 +506,12 @@ actor {
     // Verify ownership
     if (order.customer != caller) {
       Runtime.trap("Unauthorized: Can only mark your own orders as paid");
+    };
+
+    // SECURITY FIX: Only allow Stripe orders to be marked as paid by users
+    // Cash on Delivery orders must be marked as paid by admin only
+    if (order.paymentMethod != #stripe) {
+      Runtime.trap("Unauthorized: Only Stripe orders can be marked as paid by users. Cash on Delivery orders must be marked as paid by admin.");
     };
 
     let updatedTracking = List.fromArray<OrderTrackingEntry>(order.tracking);
@@ -536,6 +555,48 @@ actor {
     let updatedOrder : Order = {
       order with
       status = #completed;
+      tracking = updatedTracking.toArray();
+    };
+
+    orders.add(orderId, updatedOrder);
+  };
+
+  public shared ({ caller }) func markOrderAsPaidAdmin(orderId : Nat) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
+      Runtime.trap("Unauthorized: Only admins can mark orders as paid");
+    };
+
+    let order = switch (orders.get(orderId)) {
+      case (null) { Runtime.trap(ORDER_NOT_FOUND_MESSAGE) };
+      case (?order) { order };
+    };
+
+    if (order.paymentMethod != #cashOnDelivery) {
+      Runtime.trap("Only cash on delivery orders can be marked as paid manually");
+    };
+
+    switch (order.paymentStatus) {
+      case (#completed _) {
+        Runtime.trap("Order is already marked as paid");
+      };
+      case (_) {};
+    };
+
+    let updatedTracking = List.fromArray<OrderTrackingEntry>(order.tracking);
+    updatedTracking.add({
+      status = #confirmed;
+      timestamp = Time.now();
+      note = "Order marked as paid (admin action)";
+    });
+
+    let updatedOrder : Order = {
+      order with
+      paymentStatus = #completed {
+        sessionId = "CASH";
+        amountCents = order.totalPriceCents;
+        timestamp = Time.now();
+      };
+      status = #confirmed;
       tracking = updatedTracking.toArray();
     };
 

@@ -11,8 +11,12 @@ export default function Footer() {
     }
   };
 
+  const appIdentifier = typeof window !== 'undefined' 
+    ? encodeURIComponent(window.location.hostname) 
+    : 'farmgrew-app';
+
   return (
-    <footer className="border-t border-border/40 bg-muted/30">
+    <footer className="border-t bg-muted/30">
       <Container>
         <div className="py-16 md:py-20">
           <div className="grid md:grid-cols-3 gap-12 md:gap-16">
@@ -34,63 +38,50 @@ export default function Footer() {
               <nav className="flex flex-col space-y-3">
                 <button
                   onClick={() => scrollToSection('recommendations')}
-                  className="text-sm md:text-base text-muted-foreground hover:text-foreground hover:translate-x-1 transition-all duration-200 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-md w-fit"
+                  className="text-sm md:text-base text-muted-foreground hover:text-primary transition-colors text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded"
                 >
                   AI Recommendations
                 </button>
                 <button
                   onClick={() => scrollToSection('nutrition')}
-                  className="text-sm md:text-base text-muted-foreground hover:text-foreground hover:translate-x-1 transition-all duration-200 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-md w-fit"
+                  className="text-sm md:text-base text-muted-foreground hover:text-primary transition-colors text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded"
                 >
                   Nutrition Calculator
                 </button>
                 <button
                   onClick={() => scrollToSection('diet-plans')}
-                  className="text-sm md:text-base text-muted-foreground hover:text-foreground hover:translate-x-1 transition-all duration-200 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-md w-fit"
+                  className="text-sm md:text-base text-muted-foreground hover:text-primary transition-colors text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded"
                 >
                   Diet Plans
-                </button>
-                <button
-                  onClick={() => scrollToSection('service-area')}
-                  className="text-sm md:text-base text-muted-foreground hover:text-foreground hover:translate-x-1 transition-all duration-200 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-md w-fit"
-                >
-                  Service Area
-                </button>
-                <button
-                  onClick={() => scrollToSection('about')}
-                  className="text-sm md:text-base text-muted-foreground hover:text-foreground hover:translate-x-1 transition-all duration-200 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-md w-fit"
-                >
-                  About Us
                 </button>
               </nav>
             </div>
 
             {/* Contact */}
             <div className="space-y-5">
-              <h4 className="font-semibold text-foreground text-lg">Get in Touch</h4>
-              <p className="text-sm md:text-base text-muted-foreground leading-relaxed">
-                Currently serving Chennai with plans to expand across India.
-              </p>
+              <h4 className="font-semibold text-foreground text-lg">Contact</h4>
+              <div className="space-y-3 text-sm md:text-base text-muted-foreground">
+                <p>Chennai, Tamil Nadu</p>
+                <p>India</p>
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* Bottom Bar */}
-        <div className="border-t border-border/40 py-8">
-          <div className="flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-muted-foreground">
-            <p className="flex items-center gap-1.5 flex-wrap justify-center">
-              © {currentYear}. Built with <Heart className="w-4 h-4 text-red-500 fill-red-500 inline-block" /> using{' '}
+          {/* Bottom Bar */}
+          <div className="mt-12 pt-8 border-t flex flex-col md:flex-row items-center justify-between gap-4">
+            <p className="text-sm text-muted-foreground">
+              © {currentYear} Farmgrew. All rights reserved.
+            </p>
+            <p className="text-sm text-muted-foreground flex items-center gap-1">
+              Built with <Heart className="h-4 w-4 text-primary fill-primary" /> using{' '}
               <a
-                href="https://caffeine.ai"
+                href={`https://caffeine.ai/?utm_source=Caffeine-footer&utm_medium=referral&utm_content=${appIdentifier}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="hover:text-foreground transition-colors underline underline-offset-4 decoration-muted-foreground hover:decoration-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
+                className="text-primary hover:underline font-medium"
               >
                 caffeine.ai
               </a>
-            </p>
-            <p className="text-center md:text-right font-medium">
-              Owned by GUGAS i-tech India LLP.
             </p>
           </div>
         </div>

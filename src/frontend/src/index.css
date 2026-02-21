@@ -3,112 +3,181 @@
 @tailwind utilities;
 
 @layer base {
-    :root {
-        --radius: 0.75rem;
-        
-        /* Brand Colors - Green & Yellow */
-        --brand-green: 0.55 0.18 145;
-        --brand-green-light: 0.65 0.15 145;
-        --brand-yellow: 0.85 0.16 95;
-        --brand-yellow-dark: 0.65 0.18 85;
-        
-        /* Light Mode */
-        --background: 0.99 0 0;
-        --foreground: 0.15 0 0;
-        --card: 1 0 0;
-        --card-foreground: 0.15 0 0;
-        --popover: 1 0 0;
-        --popover-foreground: 0.15 0 0;
-        --primary: 0.55 0.18 145;
-        --primary-foreground: 0.99 0 0;
-        --secondary: 0.85 0.16 95;
-        --secondary-foreground: 0.15 0 0;
-        --muted: 0.96 0 0;
-        --muted-foreground: 0.50 0 0;
-        --accent: 0.85 0.16 95;
-        --accent-foreground: 0.15 0 0;
-        --destructive: 0.577 0.245 27.325;
-        --destructive-foreground: 0.99 0 0;
-        --border: 0.90 0 0;
-        --input: 0.90 0 0;
-        --ring: 0.55 0.18 145;
-        --chart-1: 0.55 0.18 145;
-        --chart-2: 0.85 0.16 95;
-        --chart-3: 0.65 0.15 145;
-        --chart-4: 0.75 0.14 100;
-        --chart-5: 0.45 0.20 140;
-    }
+  :root {
+    /* Brand Colors - converted to HSL for compatibility */
+    --brand-green: 145 60% 45%;
+    --brand-yellow: 95 75% 70%;
 
-    .dark {
-        --background: 0.12 0 0;
-        --foreground: 0.98 0 0;
-        --card: 0.15 0 0;
-        --card-foreground: 0.98 0 0;
-        --popover: 0.15 0 0;
-        --popover-foreground: 0.98 0 0;
-        --primary: 0.65 0.15 145;
-        --primary-foreground: 0.12 0 0;
-        --secondary: 0.75 0.14 95;
-        --secondary-foreground: 0.12 0 0;
-        --muted: 0.20 0 0;
-        --muted-foreground: 0.65 0 0;
-        --accent: 0.25 0 0;
-        --accent-foreground: 0.98 0 0;
-        --destructive: 0.65 0.22 27;
-        --destructive-foreground: 0.98 0 0;
-        --border: 0.25 0 0;
-        --input: 0.25 0 0;
-        --ring: 0.65 0.15 145;
-        --chart-1: 0.65 0.15 145;
-        --chart-2: 0.75 0.14 95;
-        --chart-3: 0.55 0.18 145;
-        --chart-4: 0.70 0.12 100;
-        --chart-5: 0.50 0.20 140;
-    }
+    /* Light Mode Colors - converted to HSL */
+    --background: 120 20% 98%;
+    --foreground: 120 10% 15%;
+    --card: 0 0% 100%;
+    --card-foreground: 120 10% 15%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 120 10% 15%;
+    --primary: 145 60% 45%;
+    --primary-foreground: 145 20% 98%;
+    --secondary: 120 10% 92%;
+    --secondary-foreground: 120 10% 20%;
+    --muted: 120 5% 94%;
+    --muted-foreground: 120 10% 45%;
+    --accent: 95 75% 70%;
+    --accent-foreground: 95 10% 20%;
+    --destructive: 25 85% 50%;
+    --destructive-foreground: 25 20% 98%;
+    --border: 120 5% 88%;
+    --input: 120 5% 88%;
+    --ring: 145 60% 45%;
+    --radius: 0.5rem;
+    --success: 145 60% 45%;
+    --warning: 75 75% 60%;
+  }
 
-    * {
-        @apply border-border;
-    }
-    
-    body {
-        @apply bg-background text-foreground antialiased;
-        font-feature-settings: "rlig" 1, "calt" 1;
-        font-optical-sizing: auto;
-    }
-    
-    h1, h2, h3, h4, h5, h6 {
-        @apply font-bold;
-        letter-spacing: -0.025em;
-        text-wrap: balance;
-    }
-    
-    h1 {
-        @apply leading-[1.1];
-    }
-    
-    h2 {
-        @apply leading-[1.15];
-    }
-    
-    h3, h4 {
-        @apply leading-[1.2];
-    }
-    
-    p {
-        @apply leading-relaxed;
-    }
+  .dark {
+    /* Dark Mode Colors - converted to HSL */
+    --background: 120 5% 12%;
+    --foreground: 120 5% 95%;
+    --card: 120 5% 15%;
+    --card-foreground: 120 5% 95%;
+    --popover: 120 5% 15%;
+    --popover-foreground: 120 5% 95%;
+    --primary: 145 60% 50%;
+    --primary-foreground: 145 5% 12%;
+    --secondary: 120 10% 22%;
+    --secondary-foreground: 120 5% 95%;
+    --muted: 120 5% 20%;
+    --muted-foreground: 120 10% 60%;
+    --accent: 95 75% 75%;
+    --accent-foreground: 95 5% 12%;
+    --destructive: 25 85% 50%;
+    --destructive-foreground: 25 5% 95%;
+    --border: 120 5% 25%;
+    --input: 120 5% 25%;
+    --ring: 145 60% 50%;
+    --success: 145 60% 50%;
+    --warning: 75 75% 60%;
+  }
 }
 
-@layer utilities {
-    .text-balance {
-        text-wrap: balance;
-    }
-    
-    .section-spacing {
-        @apply py-20 md:py-28 lg:py-32;
-    }
-    
-    .section-spacing-sm {
-        @apply py-16 md:py-20 lg:py-24;
-    }
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+
+  /* Typography Hierarchy */
+  h1 {
+    @apply text-4xl md:text-5xl font-bold tracking-tight mb-4;
+  }
+  h2 {
+    @apply text-3xl md:text-4xl font-bold tracking-tight mb-6;
+  }
+  h3 {
+    @apply text-2xl md:text-3xl font-semibold tracking-tight mb-4;
+  }
+  h4 {
+    @apply text-xl md:text-2xl font-semibold tracking-tight mb-3;
+  }
+  h5 {
+    @apply text-lg md:text-xl font-semibold mb-2;
+  }
+  h6 {
+    @apply text-base md:text-lg font-semibold mb-2;
+  }
+
+  p {
+    @apply leading-7 mb-4;
+  }
+
+  /* Spacing utilities */
+  .section-spacing {
+    @apply py-16 md:py-24;
+  }
+
+  .section-spacing-sm {
+    @apply py-12 md:py-16;
+  }
+
+  .section-spacing-xs {
+    @apply py-8 md:py-12;
+  }
 }
+
+/* Print-specific styles */
+@media print {
+  /* Hide elements that shouldn't be printed */
+  .no-print,
+  header,
+  footer,
+  nav,
+  button:not(.kot-content button),
+  .print-hide {
+    display: none !important;
+  }
+
+  /* Optimize page layout for printing */
+  body {
+    background: white !important;
+    color: black !important;
+    font-size: 12pt;
+  }
+
+  /* Ensure KOT content is visible and well-formatted */
+  .kot-container {
+    width: 100%;
+    max-width: 100%;
+    margin: 0;
+    padding: 0;
+  }
+
+  .kot-content {
+    border: 2px solid black !important;
+    box-shadow: none !important;
+    page-break-inside: avoid;
+  }
+
+  /* Ensure proper spacing and readability */
+  h1, h2, h3, h4, h5, h6 {
+    color: black !important;
+    page-break-after: avoid;
+  }
+
+  p, div {
+    color: black !important;
+  }
+
+  /* Prevent page breaks within important sections */
+  .kot-content > div {
+    page-break-inside: avoid;
+  }
+
+  /* Set appropriate margins for printing */
+  @page {
+    margin: 1cm;
+    size: A4;
+  }
+
+  /* Ensure tables and lists print correctly */
+  table {
+    page-break-inside: avoid;
+  }
+
+  /* Make sure borders are visible */
+  .border, .border-b, .border-t {
+    border-color: black !important;
+  }
+
+  /* Ensure background colors don't interfere */
+  * {
+    background: white !important;
+  }
+
+  /* Keep specific background for emphasis */
+  .bg-muted\/50 {
+    background: #f5f5f5 !important;
+  }
+}
+

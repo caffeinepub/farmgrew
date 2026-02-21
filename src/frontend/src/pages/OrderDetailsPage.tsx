@@ -10,8 +10,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Loader2, ArrowLeft, AlertCircle, CheckCircle2, Clock } from 'lucide-react';
-import { OrderStatus } from '../backend';
+import { Loader2, ArrowLeft, AlertCircle, CheckCircle2, Clock, CreditCard, Banknote } from 'lucide-react';
+import { OrderStatus, PaymentMethod } from '../backend';
 import { getProductImageUrl, getProductImageFallback } from '../lib/productImage';
 
 const STATUS_COLORS: Record<OrderStatus, string> = {
@@ -45,8 +45,38 @@ export default function OrderDetailsPage({ orderId }: OrderDetailsPageProps) {
     });
   };
 
+  const getPaymentMethodDisplay = () => {
+    if (!order) return null;
+
+    const isCOD = order.paymentMethod === PaymentMethod.cashOnDelivery;
+    
+    return (
+      <div className="flex items-center gap-2">
+        {isCOD ? (
+          <>
+            <Banknote className="h-5 w-5 text-primary" />
+            <div>
+              <div className="font-medium">Cash on Delivery</div>
+              <div className="text-sm text-muted-foreground">Pay when you receive your order</div>
+            </div>
+          </>
+        ) : (
+          <>
+            <CreditCard className="h-5 w-5 text-primary" />
+            <div>
+              <div className="font-medium">Credit/Debit Card</div>
+              <div className="text-sm text-muted-foreground">Paid via Stripe</div>
+            </div>
+          </>
+        )}
+      </div>
+    );
+  };
+
   const getPaymentStatusDisplay = () => {
     if (!order) return null;
+
+    const isCOD = order.paymentMethod === PaymentMethod.cashOnDelivery;
 
     if (order.paymentStatus.__kind__ === 'completed') {
       return (
@@ -54,8 +84,13 @@ export default function OrderDetailsPage({ orderId }: OrderDetailsPageProps) {
           <CheckCircle2 className="h-4 w-4 text-green-600" />
           <AlertTitle>Payment Completed</AlertTitle>
           <AlertDescription>
-            Payment of ₹{(Number(order.paymentStatus.completed.amountCents) / 100).toFixed(2)} received on{' '}
-            {formatDate(order.paymentStatus.completed.timestamp)}
+            {isCOD ? (
+              <>Payment of ₹{(Number(order.paymentStatus.completed.amountCents) / 100).toFixed(2)} received on{' '}
+              {formatDate(order.paymentStatus.completed.timestamp)}</>
+            ) : (
+              <>Payment of ₹{(Number(order.paymentStatus.completed.amountCents) / 100).toFixed(2)} received on{' '}
+              {formatDate(order.paymentStatus.completed.timestamp)}</>
+            )}
           </AlertDescription>
         </Alert>
       );
@@ -77,9 +112,11 @@ export default function OrderDetailsPage({ orderId }: OrderDetailsPageProps) {
     return (
       <Alert>
         <Clock className="h-4 w-4" />
-        <AlertTitle>Payment Pending</AlertTitle>
+        <AlertTitle>{isCOD ? 'Payment on Delivery' : 'Payment Pending'}</AlertTitle>
         <AlertDescription>
-          This order is awaiting payment. Please complete the payment to confirm your order.
+          {isCOD 
+            ? 'Please pay the order amount when you receive your order.'
+            : 'This order is awaiting payment. Please complete the payment to confirm your order.'}
         </AlertDescription>
       </Alert>
     );
@@ -109,7 +146,10 @@ export default function OrderDetailsPage({ orderId }: OrderDetailsPageProps) {
                 <p className="text-muted-foreground mb-6">
                   The order you're looking for doesn't exist or you don't have access to it.
                 </p>
-                <Button onClick={() => navigate('/orders')}>Back to Orders</Button>
+                <Button onClick={() => navigate('/orders')}>
+                  <ArrowLeft className="mr-2 h-4 w-4" />
+                  Back to Orders
+                </Button>
               </CardContent>
             </Card>
           </Container>
@@ -135,12 +175,15 @@ export default function OrderDetailsPage({ orderId }: OrderDetailsPageProps) {
 
           <div className="grid lg:grid-cols-3 gap-8">
             <div className="lg:col-span-2 space-y-6">
+              {/* Order Header */}
               <Card>
                 <CardHeader>
                   <div className="flex items-start justify-between">
                     <div>
-                      <CardTitle className="text-2xl">Order #{order.id.toString()}</CardTitle>
-                      <p className="text-muted-foreground mt-2">
+                      <CardTitle className="text-2xl">
+                        Order #{order.id.toString()}
+                      </CardTitle>
+                      <p className="text-sm text-muted-foreground mt-1">
                         Placed on {formatDate(order.timestamp)}
                       </p>
                     </div>
@@ -149,18 +192,42 @@ export default function OrderDetailsPage({ orderId }: OrderDetailsPageProps) {
                     </Badge>
                   </div>
                 </CardHeader>
-                <CardContent className="space-y-6">
+              </Card>
+
+              {/* Payment Method */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Payment Method</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {getPaymentMethodDisplay()}
+                </CardContent>
+              </Card>
+
+              {/* Payment Status */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Payment Status</CardTitle>
+                </CardHeader>
+                <CardContent>
                   {getPaymentStatusDisplay()}
+                </CardContent>
+              </Card>
 
-                  <div>
-                    <h3 className="font-semibold mb-4">Order Items</h3>
-                    <div className="space-y-4">
-                      {order.items.map(([productId, quantity]) => {
-                        const product = getProductDetails(productId);
-                        if (!product) return null;
+              {/* Order Items */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Order Items</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {order.items.map(([productId, quantity]) => {
+                      const product = getProductDetails(productId);
+                      if (!product) return null;
 
-                        return (
-                          <div key={productId.toString()} className="flex gap-4">
+                      return (
+                        <div key={productId.toString()}>
+                          <div className="flex gap-4">
                             <img
                               src={getProductImageUrl(product.name)}
                               alt={product.name}
@@ -170,8 +237,10 @@ export default function OrderDetailsPage({ orderId }: OrderDetailsPageProps) {
                               }}
                             />
                             <div className="flex-1">
-                              <h4 className="font-semibold">{product.name}</h4>
-                              <p className="text-sm text-muted-foreground">{product.category}</p>
+                              <h3 className="font-semibold">{product.name}</h3>
+                              <p className="text-sm text-muted-foreground">
+                                {product.category}
+                              </p>
                               <p className="text-sm text-muted-foreground mt-1">
                                 Quantity: {Number(quantity)}
                               </p>
@@ -185,60 +254,41 @@ export default function OrderDetailsPage({ orderId }: OrderDetailsPageProps) {
                               </p>
                             </div>
                           </div>
-                        );
-                      })}
-                    </div>
+                          <Separator className="mt-4" />
+                        </div>
+                      );
+                    })}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            <div className="space-y-6">
+              {/* Order Summary */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Order Summary</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Subtotal</span>
+                    <span>₹{(Number(order.totalPriceCents) / 100).toFixed(2)}</span>
+                  </div>
+                  <Separator />
+                  <div className="flex justify-between font-semibold text-lg">
+                    <span>Total</span>
+                    <span>₹{(Number(order.totalPriceCents) / 100).toFixed(2)}</span>
                   </div>
                 </CardContent>
               </Card>
 
-              <OrderTrackingTimeline order={order} />
-            </div>
-
-            <div>
-              <Card className="sticky top-24">
+              {/* Order Tracking */}
+              <Card>
                 <CardHeader>
-                  <CardTitle>Order Summary</CardTitle>
+                  <CardTitle>Order Tracking</CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">Subtotal</span>
-                      <span>₹{(Number(order.totalPriceCents) / 100).toFixed(2)}</span>
-                    </div>
-                    <Separator />
-                    <div className="flex justify-between font-semibold text-lg">
-                      <span>Total</span>
-                      <span>₹{(Number(order.totalPriceCents) / 100).toFixed(2)}</span>
-                    </div>
-                  </div>
-
-                  {order.pickupTime && (
-                    <div className="pt-4 border-t">
-                      <p className="text-sm font-medium mb-1">Pickup Time</p>
-                      <p className="text-sm text-muted-foreground">
-                        {formatDate(order.pickupTime)}
-                      </p>
-                    </div>
-                  )}
-
-                  {order.paymentStatus.__kind__ === 'pending' && (
-                    <Button
-                      onClick={() => navigate('/cart')}
-                      variant="outline"
-                      className="w-full"
-                    >
-                      Retry Payment
-                    </Button>
-                  )}
-
-                  <Button
-                    onClick={() => navigate('/shop')}
-                    variant="outline"
-                    className="w-full"
-                  >
-                    Continue Shopping
-                  </Button>
+                <CardContent>
+                  <OrderTrackingTimeline order={order} />
                 </CardContent>
               </Card>
             </div>

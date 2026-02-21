@@ -9,10 +9,12 @@ import Container from '../components/layout/Container';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Loader2, Trash2, ShoppingBag, Minus, Plus, AlertCircle } from 'lucide-react';
+import { Loader2, Trash2, ShoppingBag, Minus, Plus, AlertCircle, CreditCard, Banknote } from 'lucide-react';
 import { getProductImageUrl, getProductImageFallback } from '../lib/productImage';
-import type { ShoppingItem } from '../backend';
+import { PaymentMethod, type ShoppingItem } from '../backend';
 import { useState } from 'react';
 
 export default function CartPage() {
@@ -26,6 +28,7 @@ export default function CartPage() {
 
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const [paymentError, setPaymentError] = useState<string | null>(null);
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<'stripe' | 'cod'>('cod');
 
   const cartItems = cart?.items || [];
 
@@ -63,56 +66,63 @@ export default function CartPage() {
     setIsProcessingPayment(true);
 
     try {
-      // Check if Stripe is configured
-      if (!isStripeConfigured) {
-        setPaymentError('Payment system is not configured. Please contact the administrator.');
+      if (selectedPaymentMethod === 'stripe') {
+        if (!isStripeConfigured) {
+          setPaymentError('Stripe payment is not configured. Please select Cash on Delivery or contact the administrator.');
+          setIsProcessingPayment(false);
+          return;
+        }
+
+        const orderId = await placeOrder.mutateAsync({
+          paymentMethod: PaymentMethod.stripe,
+          pickupTime: null,
+        });
+
+        const shoppingItems: ShoppingItem[] = cartItems.map(([productId, quantity]) => {
+          const product = getProductDetails(productId);
+          if (!product) throw new Error('Product not found');
+
+          return {
+            productName: product.name,
+            productDescription: product.description,
+            priceInCents: product.priceCents,
+            quantity,
+            currency: 'inr',
+          };
+        });
+
+        const session = await createCheckoutSession.mutateAsync({
+          items: shoppingItems,
+          orderId: orderId.toString(),
+        });
+
+        if (!session?.url) {
+          throw new Error('Stripe session missing url');
+        }
+
+        window.location.href = session.url;
+      } else {
+        const orderId = await placeOrder.mutateAsync({
+          paymentMethod: PaymentMethod.cashOnDelivery,
+          pickupTime: null,
+        });
+
         setIsProcessingPayment(false);
-        return;
+        navigate(`/orders/${orderId}`);
       }
-
-      // Place the order first to get orderId
-      const orderId = await placeOrder.mutateAsync(null);
-
-      // Build shopping items for Stripe
-      const shoppingItems: ShoppingItem[] = cartItems.map(([productId, quantity]) => {
-        const product = getProductDetails(productId);
-        if (!product) throw new Error('Product not found');
-
-        return {
-          productName: product.name,
-          productDescription: product.description,
-          priceInCents: product.priceCents,
-          quantity,
-          currency: 'inr',
-        };
-      });
-
-      // Create Stripe checkout session
-      const session = await createCheckoutSession.mutateAsync({
-        items: shoppingItems,
-        orderId: orderId.toString(),
-      });
-
-      // Validate session URL
-      if (!session?.url) {
-        throw new Error('Stripe session missing url');
-      }
-
-      // Redirect to Stripe checkout (do NOT use router navigation)
-      window.location.href = session.url;
     } catch (error: any) {
       console.error('Checkout failed:', error);
-      setPaymentError(error.message || 'Failed to start checkout. Please try again.');
+      setPaymentError(error.message || 'Failed to place order. Please try again.');
       setIsProcessingPayment(false);
     }
   };
 
   if (cartLoading || stripeConfigLoading) {
     return (
-      <div className="min-h-screen flex flex-col">
+      <div className="min-h-screen flex flex-col bg-background">
         <TopNav />
         <main className="flex-1 flex items-center justify-center">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <Loader2 className="h-12 w-12 animate-spin text-primary" />
         </main>
         <Footer />
       </div>
@@ -120,21 +130,23 @@ export default function CartPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col bg-background">
       <TopNav />
       <main className="flex-1 section-spacing-sm">
         <Container>
-          <h1 className="text-4xl font-bold mb-8">Shopping Cart</h1>
+          <h1 className="mb-8">Shopping Cart</h1>
 
           {cartItems.length === 0 ? (
-            <Card>
-              <CardContent className="py-12 text-center">
-                <ShoppingBag className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-                <h2 className="text-2xl font-semibold mb-2">Your cart is empty</h2>
-                <p className="text-muted-foreground mb-6">
+            <Card className="rounded-lg shadow-soft">
+              <CardContent className="py-16 text-center space-y-6">
+                <ShoppingBag className="h-20 w-20 text-muted-foreground mx-auto" />
+                <h2>Your cart is empty</h2>
+                <p className="text-muted-foreground text-lg">
                   Add some products to get started
                 </p>
-                <Button onClick={() => navigate('/shop')}>Browse Products</Button>
+                <Button onClick={() => navigate('/shop')} size="lg" className="bg-primary hover:bg-primary/90">
+                  Browse Products
+                </Button>
               </CardContent>
             </Card>
           ) : (
@@ -145,31 +157,31 @@ export default function CartPage() {
                   if (!product) return null;
 
                   return (
-                    <Card key={productId.toString()}>
-                      <CardContent className="p-4">
-                        <div className="flex gap-4">
+                    <Card key={productId.toString()} className="rounded-lg shadow-soft hover:shadow-soft-lg transition-shadow">
+                      <CardContent className="p-6">
+                        <div className="flex gap-6">
                           <img
                             src={getProductImageUrl(product.name)}
                             alt={product.name}
-                            className="w-24 h-24 object-cover rounded-lg"
+                            className="w-28 h-28 object-cover rounded-lg"
                             onError={(e) => {
                               e.currentTarget.src = getProductImageFallback();
                             }}
                           />
-                          <div className="flex-1">
-                            <h3 className="font-semibold text-lg">{product.name}</h3>
+                          <div className="flex-1 space-y-3">
+                            <h3 className="font-semibold text-xl text-foreground">{product.name}</h3>
                             <p className="text-sm text-muted-foreground">{product.category}</p>
-                            <p className="text-sm text-muted-foreground mt-1">
+                            <p className="text-sm text-muted-foreground">
                               ₹{(Number(product.priceCents) / 100).toFixed(2)} per unit
                             </p>
-                            <div className="flex items-center gap-3 mt-3">
+                            <div className="flex items-center gap-4">
                               <div className="flex items-center border rounded-lg">
                                 <Button
                                   variant="ghost"
                                   size="sm"
                                   onClick={() => handleQuantityChange(productId, Number(quantity) - 1)}
                                   disabled={updateCartItem.isPending}
-                                  className="h-8 w-8 p-0"
+                                  className="h-10 w-10 p-0 rounded-l-lg"
                                 >
                                   <Minus className="h-4 w-4" />
                                 </Button>
@@ -182,7 +194,7 @@ export default function CartPage() {
                                       handleQuantityChange(productId, val);
                                     }
                                   }}
-                                  className="h-8 w-16 text-center border-0 focus-visible:ring-0"
+                                  className="h-10 w-20 text-center border-0 focus-visible:ring-0"
                                   min="1"
                                 />
                                 <Button
@@ -190,7 +202,7 @@ export default function CartPage() {
                                   size="sm"
                                   onClick={() => handleQuantityChange(productId, Number(quantity) + 1)}
                                   disabled={updateCartItem.isPending}
-                                  className="h-8 w-8 p-0"
+                                  className="h-10 w-10 p-0 rounded-r-lg"
                                 >
                                   <Plus className="h-4 w-4" />
                                 </Button>
@@ -200,14 +212,14 @@ export default function CartPage() {
                                 size="sm"
                                 onClick={() => handleRemove(productId)}
                                 disabled={removeFromCart.isPending}
-                                className="text-destructive hover:text-destructive"
+                                className="text-destructive hover:text-destructive hover:bg-destructive/10"
                               >
-                                <Trash2 className="h-4 w-4" />
+                                <Trash2 className="h-5 w-5" />
                               </Button>
                             </div>
                           </div>
                           <div className="text-right">
-                            <p className="font-semibold text-lg">
+                            <p className="font-bold text-2xl text-primary">
                               ₹{((Number(product.priceCents) * Number(quantity)) / 100).toFixed(2)}
                             </p>
                           </div>
@@ -219,58 +231,83 @@ export default function CartPage() {
               </div>
 
               <div>
-                <Card className="sticky top-24">
+                <Card className="sticky top-24 rounded-lg shadow-soft-lg">
                   <CardHeader>
-                    <CardTitle>Order Summary</CardTitle>
+                    <CardTitle className="text-2xl">Order Summary</CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-4">
+                  <CardContent className="space-y-6">
                     {paymentError && (
-                      <Alert variant="destructive">
-                        <AlertCircle className="h-4 w-4" />
-                        <AlertTitle>Payment Error</AlertTitle>
+                      <Alert variant="destructive" className="rounded-lg">
+                        <AlertCircle className="h-5 w-5" />
+                        <AlertTitle>Error</AlertTitle>
                         <AlertDescription>{paymentError}</AlertDescription>
                       </Alert>
                     )}
 
-                    {!isStripeConfigured && (
-                      <Alert>
-                        <AlertCircle className="h-4 w-4" />
-                        <AlertTitle>Payment Unavailable</AlertTitle>
-                        <AlertDescription>
-                          Payment system is not configured. Please contact support.
-                        </AlertDescription>
-                      </Alert>
-                    )}
+                    <div className="space-y-4">
+                      <Label className="text-base font-semibold">Payment Method</Label>
+                      <RadioGroup
+                        value={selectedPaymentMethod}
+                        onValueChange={(value) => setSelectedPaymentMethod(value as 'stripe' | 'cod')}
+                        className="space-y-3"
+                      >
+                        <div className="flex items-center space-x-3 border rounded-lg p-4 hover:bg-accent/50 cursor-pointer transition-colors">
+                          <RadioGroupItem value="cod" id="cod" />
+                          <Label htmlFor="cod" className="flex items-center gap-3 cursor-pointer flex-1">
+                            <Banknote className="h-6 w-6 text-primary" />
+                            <div>
+                              <div className="font-semibold">Cash on Delivery</div>
+                              <div className="text-sm text-muted-foreground">Pay when you receive your order</div>
+                            </div>
+                          </Label>
+                        </div>
+                        <div className="flex items-center space-x-3 border rounded-lg p-4 hover:bg-accent/50 cursor-pointer transition-colors">
+                          <RadioGroupItem value="stripe" id="stripe" disabled={!isStripeConfigured} />
+                          <Label htmlFor="stripe" className="flex items-center gap-3 cursor-pointer flex-1">
+                            <CreditCard className="h-6 w-6 text-primary" />
+                            <div>
+                              <div className="font-semibold">Credit/Debit Card</div>
+                              <div className="text-sm text-muted-foreground">
+                                {isStripeConfigured ? 'Pay securely with Stripe' : 'Currently unavailable'}
+                              </div>
+                            </div>
+                          </Label>
+                        </div>
+                      </RadioGroup>
+                    </div>
 
-                    <div className="space-y-2">
-                      <div className="flex justify-between text-sm">
+                    <div className="space-y-3 pt-4 border-t">
+                      <div className="flex justify-between text-base">
                         <span className="text-muted-foreground">Subtotal</span>
-                        <span>₹{(calculateTotal() / 100).toFixed(2)}</span>
+                        <span className="font-medium">₹{(calculateTotal() / 100).toFixed(2)}</span>
                       </div>
-                      <div className="flex justify-between font-semibold text-lg pt-2 border-t">
+                      <div className="flex justify-between font-bold text-2xl pt-3 border-t">
                         <span>Total</span>
-                        <span>₹{(calculateTotal() / 100).toFixed(2)}</span>
+                        <span className="text-primary">₹{(calculateTotal() / 100).toFixed(2)}</span>
                       </div>
                     </div>
                     <Button
                       onClick={handleCheckout}
-                      disabled={isProcessingPayment || !isStripeConfigured}
-                      className="w-full"
+                      disabled={isProcessingPayment}
+                      className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold py-6 text-lg rounded-lg"
                       size="lg"
                     >
                       {isProcessingPayment ? (
                         <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Starting Payment...
+                          <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                          Processing...
                         </>
+                      ) : selectedPaymentMethod === 'cod' ? (
+                        'Place Order'
                       ) : (
                         'Proceed to Payment'
                       )}
                     </Button>
                     <Button
-                      onClick={() => navigate('/shop')}
                       variant="outline"
-                      className="w-full"
+                      onClick={() => navigate('/shop')}
+                      className="w-full font-medium py-6 text-base rounded-lg"
+                      size="lg"
                     >
                       Continue Shopping
                     </Button>

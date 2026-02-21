@@ -2,11 +2,11 @@
   "kind": "feature_evidence_report",
   "features": [
     {
-      "featureId": "feature-update-the-frontend-initial-admin-setup-flow-to-use-the-new-backend-initial-setup-api-instead-of-the-current-workaround-that-throws-an-error-on-credentials-not-set-so-that-clicking-configure-admin-credentials-successfully-completes-setup-after-a-reset-and-stops-showing-the-circular-lockout-error-banner",
-      "featureTitle": "Update the frontend initial admin setup flow to use the new backend initial-setup API (instead of the current workaround that throws an error on \"Credentials not set\"), so that clicking \"Configure Admin Credentials\" successfully completes setup after a reset and stops showing the circular-lockout error banner.",
+      "featureId": "feature-ensure-the-oklch-color-system-variables-defined-in-frontend-index-css-are-properly-applied-throughout-all-components-verify-that-css-custom-properties-color-primary-color-surface-etc-are-correctly-referenced-in-component-styles",
+      "featureTitle": "Ensure the OKLCH color system variables defined in frontend/index.css are properly applied throughout all components. Verify that CSS custom properties (--color-primary, --color-surface, etc.) are correctly referenced in component styles.",
       "files": [
-        "frontend/src/components/admin/InitialAdminSetupForm.tsx",
-        "frontend/src/hooks/useInitialAdminSetup.ts"
+        "frontend/src/index.css",
+        "frontend/tailwind.config.js"
       ],
       "components": [
         "core-infrastructure@1.0.2",

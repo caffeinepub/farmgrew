@@ -66,6 +66,10 @@ export const PaymentStatus = IDL.Variant({
   }),
   'failed' : IDL.Record({ 'reason' : IDL.Text }),
 });
+export const PaymentMethod = IDL.Variant({
+  'stripe' : IDL.Null,
+  'cashOnDelivery' : IDL.Null,
+});
 export const OrderTrackingEntry = IDL.Record({
   'status' : OrderStatus,
   'note' : IDL.Text,
@@ -75,6 +79,7 @@ export const Order = IDL.Record({
   'id' : IDL.Nat,
   'status' : OrderStatus,
   'paymentStatus' : PaymentStatus,
+  'paymentMethod' : PaymentMethod,
   'customer' : IDL.Principal,
   'tracking' : IDL.Vec(OrderTrackingEntry),
   'totalPriceCents' : IDL.Nat,
@@ -179,7 +184,8 @@ export const idlService = IDL.Service({
   'isStripeConfigured' : IDL.Func([], [IDL.Bool], ['query']),
   'listAllProducts' : IDL.Func([], [IDL.Vec(Product)], ['query']),
   'listProducts' : IDL.Func([IDL.Opt(IDL.Text)], [IDL.Vec(Product)], ['query']),
-  'placeOrder' : IDL.Func([IDL.Opt(Time)], [IDL.Nat], []),
+  'markOrderAsPaidAdmin' : IDL.Func([IDL.Nat], [], []),
+  'placeOrder' : IDL.Func([PaymentMethod, IDL.Opt(Time)], [IDL.Nat], []),
   'registerCustomer' : IDL.Func([IDL.Text, IDL.Text, IDL.Text], [], []),
   'removeFromCart' : IDL.Func([IDL.Nat], [], []),
   'revokeAdminRole' : IDL.Func([IDL.Principal], [], []),
@@ -260,6 +266,10 @@ export const idlFactory = ({ IDL }) => {
     }),
     'failed' : IDL.Record({ 'reason' : IDL.Text }),
   });
+  const PaymentMethod = IDL.Variant({
+    'stripe' : IDL.Null,
+    'cashOnDelivery' : IDL.Null,
+  });
   const OrderTrackingEntry = IDL.Record({
     'status' : OrderStatus,
     'note' : IDL.Text,
@@ -269,6 +279,7 @@ export const idlFactory = ({ IDL }) => {
     'id' : IDL.Nat,
     'status' : OrderStatus,
     'paymentStatus' : PaymentStatus,
+    'paymentMethod' : PaymentMethod,
     'customer' : IDL.Principal,
     'tracking' : IDL.Vec(OrderTrackingEntry),
     'totalPriceCents' : IDL.Nat,
@@ -374,7 +385,8 @@ export const idlFactory = ({ IDL }) => {
         [IDL.Vec(Product)],
         ['query'],
       ),
-    'placeOrder' : IDL.Func([IDL.Opt(Time)], [IDL.Nat], []),
+    'markOrderAsPaidAdmin' : IDL.Func([IDL.Nat], [], []),
+    'placeOrder' : IDL.Func([PaymentMethod, IDL.Opt(Time)], [IDL.Nat], []),
     'registerCustomer' : IDL.Func([IDL.Text, IDL.Text, IDL.Text], [], []),
     'removeFromCart' : IDL.Func([IDL.Nat], [], []),
     'revokeAdminRole' : IDL.Func([IDL.Principal], [], []),

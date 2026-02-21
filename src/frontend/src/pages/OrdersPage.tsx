@@ -6,15 +6,15 @@ import Container from '../components/layout/Container';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Package, ChevronRight, AlertCircle, CheckCircle2, Clock } from 'lucide-react';
-import { OrderStatus, type Order } from '../backend';
+import { Loader2, Package, ChevronRight, AlertCircle, CheckCircle2, Clock, CreditCard, Banknote } from 'lucide-react';
+import { OrderStatus, PaymentMethod, type Order } from '../backend';
 
 const STATUS_COLORS: Record<OrderStatus, string> = {
-  [OrderStatus.pending]: 'bg-yellow-500/10 text-yellow-700 dark:text-yellow-400',
-  [OrderStatus.confirmed]: 'bg-blue-500/10 text-blue-700 dark:text-blue-400',
-  [OrderStatus.completed]: 'bg-green-500/10 text-green-700 dark:text-green-400',
-  [OrderStatus.expired]: 'bg-gray-500/10 text-gray-700 dark:text-gray-400',
-  [OrderStatus.canceled]: 'bg-red-500/10 text-red-700 dark:text-red-400',
+  [OrderStatus.pending]: 'bg-warning/10 text-warning border-warning/20',
+  [OrderStatus.confirmed]: 'bg-primary/10 text-primary border-primary/20',
+  [OrderStatus.completed]: 'bg-success/10 text-success border-success/20',
+  [OrderStatus.expired]: 'bg-muted text-muted-foreground border-border',
+  [OrderStatus.canceled]: 'bg-destructive/10 text-destructive border-destructive/20',
 };
 
 export default function OrdersPage() {
@@ -33,12 +33,12 @@ export default function OrdersPage() {
 
   const getPaymentStatusIcon = (order: Order) => {
     if (order.paymentStatus.__kind__ === 'completed') {
-      return <CheckCircle2 className="h-4 w-4 text-green-600" />;
+      return <CheckCircle2 className="h-5 w-5 text-success" />;
     }
     if (order.paymentStatus.__kind__ === 'failed') {
-      return <AlertCircle className="h-4 w-4 text-red-600" />;
+      return <AlertCircle className="h-5 w-5 text-destructive" />;
     }
-    return <Clock className="h-4 w-4 text-yellow-600" />;
+    return <Clock className="h-5 w-5 text-warning" />;
   };
 
   const getPaymentStatusText = (order: Order) => {
@@ -48,15 +48,34 @@ export default function OrdersPage() {
     if (order.paymentStatus.__kind__ === 'failed') {
       return 'Payment Failed';
     }
-    return 'Payment Pending';
+    return order.paymentMethod === PaymentMethod.cashOnDelivery ? 'Payment on Delivery' : 'Payment Pending';
+  };
+
+  const getPaymentMethodBadge = (order: Order) => {
+    const isCOD = order.paymentMethod === PaymentMethod.cashOnDelivery;
+    return (
+      <Badge variant="outline" className="flex items-center gap-2 px-3 py-1">
+        {isCOD ? (
+          <>
+            <Banknote className="h-4 w-4" />
+            <span>COD</span>
+          </>
+        ) : (
+          <>
+            <CreditCard className="h-4 w-4" />
+            <span>Card</span>
+          </>
+        )}
+      </Badge>
+    );
   };
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex flex-col">
+      <div className="min-h-screen flex flex-col bg-background">
         <TopNav />
         <main className="flex-1 flex items-center justify-center">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <Loader2 className="h-12 w-12 animate-spin text-primary" />
         </main>
         <Footer />
       </div>
@@ -64,26 +83,28 @@ export default function OrdersPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col bg-background">
       <TopNav />
       <main className="flex-1 section-spacing-sm">
         <Container>
-          <div className="mb-8">
-            <h1 className="text-4xl font-bold mb-2">My Orders</h1>
-            <p className="text-muted-foreground">
+          <div className="mb-8 space-y-3">
+            <h1>My Orders</h1>
+            <p className="text-lg text-muted-foreground">
               View and track your order history
             </p>
           </div>
 
           {!orders || orders.length === 0 ? (
-            <Card>
-              <CardContent className="py-12 text-center">
-                <Package className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-                <h2 className="text-2xl font-semibold mb-2">No orders yet</h2>
-                <p className="text-muted-foreground mb-6">
+            <Card className="rounded-lg shadow-soft">
+              <CardContent className="py-16 text-center space-y-6">
+                <Package className="h-20 w-20 text-muted-foreground mx-auto" />
+                <h2>No orders yet</h2>
+                <p className="text-muted-foreground text-lg">
                   Start shopping to place your first order
                 </p>
-                <Button onClick={() => navigate('/shop')}>Browse Products</Button>
+                <Button onClick={() => navigate('/shop')} size="lg" className="bg-primary hover:bg-primary/90">
+                  Browse Products
+                </Button>
               </CardContent>
             </Card>
           ) : (
@@ -91,26 +112,27 @@ export default function OrdersPage() {
               {orders.map((order) => (
                 <Card
                   key={order.id.toString()}
-                  className="hover:shadow-md transition-shadow cursor-pointer"
+                  className="hover:shadow-soft-lg transition-all duration-200 cursor-pointer rounded-lg"
                   onClick={() => navigate(`/orders/${order.id}`)}
                 >
-                  <CardHeader>
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <CardTitle className="text-xl">
+                  <CardHeader className="pb-4">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="space-y-2">
+                        <CardTitle className="text-2xl">
                           Order #{order.id.toString()}
                         </CardTitle>
-                        <p className="text-sm text-muted-foreground mt-1">
+                        <p className="text-sm text-muted-foreground">
                           {formatDate(order.timestamp)}
                         </p>
                       </div>
-                      <div className="flex flex-col items-end gap-2">
+                      <div className="flex flex-col items-end gap-3">
                         <Badge className={STATUS_COLORS[order.status]}>
                           {order.status}
                         </Badge>
-                        <div className="flex items-center gap-1 text-sm">
+                        {getPaymentMethodBadge(order)}
+                        <div className="flex items-center gap-2 text-sm">
                           {getPaymentStatusIcon(order)}
-                          <span className="text-muted-foreground">
+                          <span className="text-muted-foreground font-medium">
                             {getPaymentStatusText(order)}
                           </span>
                         </div>
@@ -119,17 +141,17 @@ export default function OrdersPage() {
                   </CardHeader>
                   <CardContent>
                     <div className="flex items-center justify-between">
-                      <div>
+                      <div className="space-y-1">
                         <p className="text-sm text-muted-foreground">
                           {order.items.length} item{order.items.length !== 1 ? 's' : ''}
                         </p>
-                        <p className="text-lg font-semibold mt-1">
+                        <p className="text-2xl font-bold text-primary">
                           ₹{(Number(order.totalPriceCents) / 100).toFixed(2)}
                         </p>
                       </div>
-                      <Button variant="ghost" size="sm">
+                      <Button variant="ghost" size="lg" className="gap-2">
                         View Details
-                        <ChevronRight className="ml-2 h-4 w-4" />
+                        <ChevronRight className="h-5 w-5" />
                       </Button>
                     </div>
                   </CardContent>

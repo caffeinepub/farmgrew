@@ -22,6 +22,7 @@ export interface Order {
   'id' : bigint,
   'status' : OrderStatus,
   'paymentStatus' : PaymentStatus,
+  'paymentMethod' : PaymentMethod,
   'customer' : Principal,
   'tracking' : Array<OrderTrackingEntry>,
   'totalPriceCents' : bigint,
@@ -39,6 +40,8 @@ export interface OrderTrackingEntry {
   'note' : string,
   'timestamp' : Time,
 }
+export type PaymentMethod = { 'stripe' : null } |
+  { 'cashOnDelivery' : null };
 export type PaymentStatus = { 'pending' : null } |
   {
     'completed' : {
@@ -151,7 +154,8 @@ export interface _SERVICE {
   'isStripeConfigured' : ActorMethod<[], boolean>,
   'listAllProducts' : ActorMethod<[], Array<Product>>,
   'listProducts' : ActorMethod<[[] | [string]], Array<Product>>,
-  'placeOrder' : ActorMethod<[[] | [Time]], bigint>,
+  'markOrderAsPaidAdmin' : ActorMethod<[bigint], undefined>,
+  'placeOrder' : ActorMethod<[PaymentMethod, [] | [Time]], bigint>,
   'registerCustomer' : ActorMethod<[string, string, string], undefined>,
   'removeFromCart' : ActorMethod<[bigint], undefined>,
   'revokeAdminRole' : ActorMethod<[Principal], undefined>,

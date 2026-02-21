@@ -1,7 +1,7 @@
 {
   "kind": "coverage_report",
   "version": "1.0",
-  "generatedAt": "2026-02-12T10:21:29.939Z",
+  "generatedAt": "2026-02-21T05:18:21.304Z",
   "sources": {
     "buildRequest": true,
     "implementationPlan": true
@@ -12,46 +12,74 @@
     "items": [
       {
         "id": "REQ-1",
-        "summary": "Implement a backend canister upgrade migration that fully resets admin configuration by (1) setting stored admin credentials to null and (2) clearing/removing all AccessControl role assignments so that no principal retains the admin role after the reset.",
-        "status": "unknown",
-        "plannedFiles": [],
+        "summary": "Restore background colors and border colors to all button elements across the application. Buttons should render with visible colors matching the OKLCH color system defined in the index.css file.",
+        "status": "missing",
+        "plannedFiles": [
+          "frontend/src/components/auth/LoginButton.tsx",
+          "frontend/src/components/shop/ProductCard.tsx",
+          "frontend/src/components/landing/Hero.tsx",
+          "frontend/src/components/landing/RecommendationsSection.tsx",
+          "frontend/src/components/landing/NutritionCalculatorSection.tsx",
+          "frontend/src/components/landing/DietPlansSection.tsx",
+          "frontend/src/pages/CartPage.tsx",
+          "frontend/src/pages/AdminPage.tsx",
+          "frontend/src/components/admin/AdminManagement.tsx",
+          "frontend/src/components/admin/InitialAdminSetupForm.tsx",
+          "frontend/src/components/auth/AdminLoginForm.tsx",
+          "frontend/src/pages/RegisterPage.tsx"
+        ],
         "matchedFiles": []
       },
       {
         "id": "REQ-2",
-        "summary": "Add a backend API that allows re-initializing admin access after a reset: when admin credentials are currently not configured, allow an authenticated Internet Identity caller to set new initial admin username/password and become the first admin. This must be rejected if admin credentials already exist.",
-        "status": "unknown",
-        "plannedFiles": [],
+        "summary": "Restore background colors and border colors to all card and box components (including product cards, diet plan cards, recommendation sections, and form containers). All boxes should render with visible styling matching the design system.",
+        "status": "missing",
+        "plannedFiles": [
+          "frontend/src/components/shop/ProductCard.tsx",
+          "frontend/src/components/landing/DietPlansSection.tsx",
+          "frontend/src/components/landing/RecommendationsSection.tsx",
+          "frontend/src/components/landing/NutritionCalculatorSection.tsx",
+          "frontend/src/pages/CartPage.tsx",
+          "frontend/src/pages/OrdersPage.tsx",
+          "frontend/src/pages/OrderDetailsPage.tsx",
+          "frontend/src/components/orders/OrderTrackingTimeline.tsx",
+          "frontend/src/pages/AdminPage.tsx",
+          "frontend/src/components/admin/InitialAdminSetupForm.tsx",
+          "frontend/src/components/auth/AdminLoginForm.tsx",
+          "frontend/src/pages/RegisterPage.tsx",
+          "frontend/src/components/landing/ServiceArea.tsx",
+          "frontend/src/components/landing/About.tsx"
+        ],
         "matchedFiles": []
       },
       {
         "id": "REQ-3",
-        "summary": "Update the frontend initial admin setup flow to use the new backend initial-setup API (instead of the current workaround that throws an error on \"Credentials not set\"), so that clicking \"Configure Admin Credentials\" successfully completes setup after a reset and stops showing the circular-lockout error banner.",
+        "summary": "Ensure the OKLCH color system variables defined in frontend/index.css are properly applied throughout all components. Verify that CSS custom properties (--color-primary, --color-surface, etc.) are correctly referenced in component styles.",
         "status": "implemented",
         "plannedFiles": [
-          "frontend/src/hooks/useInitialAdminSetup.ts",
-          "frontend/src/components/admin/InitialAdminSetupForm.tsx"
+          "frontend/tailwind.config.js",
+          "frontend/src/index.css",
+          "frontend/src/components/landing/TopNav.tsx",
+          "frontend/src/components/landing/Footer.tsx",
+          "frontend/src/components/shop/CategoryFilter.tsx",
+          "frontend/src/components/admin/AdminCredentialsRotation.tsx",
+          "frontend/src/pages/PaymentSuccessPage.tsx",
+          "frontend/src/pages/PaymentFailurePage.tsx"
         ],
         "matchedFiles": [
-          "frontend/src/hooks/useInitialAdminSetup.ts",
-          "frontend/src/components/admin/InitialAdminSetupForm.tsx"
+          "frontend/tailwind.config.js",
+          "frontend/src/index.css"
         ]
       }
     ]
   },
   "changedFiles": [
-    "backend/main.mo",
-    "backend/migration.mo",
     "build-request.json",
     "feature_evidence.json",
     "frontend-file-summaries.txt",
     "frontend-implementation-plan.json",
-    "frontend/src/backend.d.ts",
-    "frontend/src/backend.ts",
-    "frontend/src/components/admin/InitialAdminSetupForm.tsx",
-    "frontend/src/declarations/backend.did.d.ts",
-    "frontend/src/declarations/backend.did.js",
-    "frontend/src/hooks/useInitialAdminSetup.ts",
+    "frontend/src/index.css",
+    "frontend/tailwind.config.js",
     "project_state.json",
     "scratch/component-selection.json",
     "spec.md",

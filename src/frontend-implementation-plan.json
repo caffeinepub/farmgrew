@@ -1,27 +1,209 @@
 {
   "kind": "implementation_plan",
   "version": "1.0",
-  "title": "Fix initial admin setup to use backend initial-setup API and remove circular lockout messaging",
+  "title": "Fix missing colors on buttons and boxes",
   "requirements": [
     {
-      "id": "REQ-3",
-      "summary": "Update initial admin setup flow to call the backend initial-setup API and refresh admin state after success.",
+      "id": "REQ-1",
+      "summary": "Restore background colors and border colors to all button elements across the application",
       "acceptanceCriteria": [
-        "On the Initial Admin Setup screen, submitting valid username/password/confirm password calls the backend initial-setup API and succeeds when the backend is in the reset/fresh state.",
-        "After success, the UI shows the existing success state and a subsequent reload allows access to the admin dashboard for that same Internet Identity principal.",
-        "If credentials are already configured, the UI shows an actionable error (e.g., instructing the user to use the admin login form) and does not claim that reset requires contacting an administrator.",
-        "React Query caches related to admin state (e.g., isAdminConfigured, isAdmin) are invalidated/refetched appropriately after setup success."
+        "All buttons display with appropriate background colors",
+        "Button hover states show visible color changes",
+        "Button text has sufficient contrast against backgrounds"
       ],
       "file_operations": [
         {
-          "path": "frontend/src/hooks/useInitialAdminSetup.ts",
+          "path": "frontend/src/components/auth/LoginButton.tsx",
           "operation": "modify",
-          "description": "Replace the current workaround logic with direct calls to backend capabilities: use the backend isAdminConfigured() for configuration detection, and call initializeAdminAccess(username, password) for initial admin setup. Update error mapping to show an actionable message when setup is disallowed because credentials already exist. Invalidate/refetch React Query caches for admin state (e.g., ['isAdminConfigured'], ['isAdmin']) after successful setup. Use the authorization component’s Internet Identity + role-based access control flow as already wired in the app; verify the component's usage instructions before implementing."
+          "description": "Verify and restore button background colors using the OKLCH color system CSS custom properties (--color-primary, --color-surface). Ensure the button has visible bg-* classes referencing the design system colors for both authenticated and unauthenticated states, plus proper hover states."
+        },
+        {
+          "path": "frontend/src/components/shop/ProductCard.tsx",
+          "operation": "modify",
+          "description": "Restore add-to-cart button styling with proper background color (bg-primary or bg-accent) and hover states (hover:bg-primary-dark). Ensure button text has sufficient contrast and the button renders with visible colors from the OKLCH system."
+        },
+        {
+          "path": "frontend/src/components/landing/Hero.tsx",
+          "operation": "modify",
+          "description": "Restore CTA button colors ('Shop Now' and 'Get Personalized Recommendations' buttons) using bg-primary, bg-accent, or appropriate color classes with hover states. Verify buttons reference CSS custom properties correctly."
+        },
+        {
+          "path": "frontend/src/components/landing/RecommendationsSection.tsx",
+          "operation": "modify",
+          "description": "Restore health goal selection button colors and states. Ensure selected/unselected states have visible background colors using bg-primary/bg-surface classes and proper border colors."
+        },
+        {
+          "path": "frontend/src/components/landing/NutritionCalculatorSection.tsx",
+          "operation": "modify",
+          "description": "Restore button colors for 'Add to Cart' and calculator action buttons. Apply proper background colors and hover states using the OKLCH design system variables."
+        },
+        {
+          "path": "frontend/src/components/landing/DietPlansSection.tsx",
+          "operation": "modify",
+          "description": "Restore diet plan selection card button styling with visible background and border colors using the design system. Ensure selected state is visually distinct with proper color application."
+        },
+        {
+          "path": "frontend/src/pages/CartPage.tsx",
+          "operation": "modify",
+          "description": "Restore checkout button styling (Stripe and Cash on Delivery buttons) with proper background colors (bg-primary, bg-accent) and hover states. Ensure quantity control buttons also have visible styling."
+        },
+        {
+          "path": "frontend/src/pages/AdminPage.tsx",
+          "operation": "modify",
+          "description": "Restore all admin action button colors including create/edit/delete product buttons, Stripe configuration submit button, and order management buttons. Apply consistent bg-primary or bg-accent classes with proper hover states."
+        },
+        {
+          "path": "frontend/src/components/admin/AdminManagement.tsx",
+          "operation": "modify",
+          "description": "Restore button colors for admin role management actions (grant/revoke admin) using proper background and border colors from the OKLCH system."
         },
         {
           "path": "frontend/src/components/admin/InitialAdminSetupForm.tsx",
           "operation": "modify",
-          "description": "Adjust the Initial Admin Setup UI to align with the new initializeAdminAccess-based flow: ensure submission uses the updated hook, remove/avoid the circular-lockout copy that tells users to contact an administrator after a reset, and present actionable guidance when credentials are already configured (e.g., prompt to use the admin login form). Keep the existing success state and reload behavior, ensuring it triggers after caches are invalidated/refetched. Compose existing shadcn-ui components (Card, Alert, Button, Input) without modifying immutablePaths; verify the component's usage instructions before implementing."
+          "description": "Restore submit button styling for initial admin setup form with visible background color and hover state using design system variables."
+        },
+        {
+          "path": "frontend/src/components/auth/AdminLoginForm.tsx",
+          "operation": "modify",
+          "description": "Restore login button background color and hover state using bg-primary with proper contrast for button text."
+        },
+        {
+          "path": "frontend/src/pages/RegisterPage.tsx",
+          "operation": "modify",
+          "description": "Restore save/submit button styling for customer registration form with visible background color (bg-primary) and hover state."
+        }
+      ]
+    },
+    {
+      "id": "REQ-2",
+      "summary": "Restore background colors and border colors to all card and box components",
+      "acceptanceCriteria": [
+        "Product cards display with visible borders and backgrounds",
+        "Diet plan selection cards show proper styling",
+        "Health goal selection buttons render with visible colors",
+        "Form containers and input boxes have visible borders"
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/components/shop/ProductCard.tsx",
+          "operation": "modify",
+          "description": "Restore product card container background (bg-surface or bg-white) and border colors (border-border or border-gray-200) using the OKLCH design system. Ensure card shadow and hover effects are visible."
+        },
+        {
+          "path": "frontend/src/components/landing/DietPlansSection.tsx",
+          "operation": "modify",
+          "description": "Restore diet plan card styling with visible background colors (bg-surface), border colors (border-border), and proper selected state styling using the design system variables."
+        },
+        {
+          "path": "frontend/src/components/landing/RecommendationsSection.tsx",
+          "operation": "modify",
+          "description": "Restore health goal selection card/button backgrounds and borders. Apply bg-surface or bg-primary-light for unselected state and bg-primary for selected state with visible border colors."
+        },
+        {
+          "path": "frontend/src/components/landing/NutritionCalculatorSection.tsx",
+          "operation": "modify",
+          "description": "Restore nutrition calculator container background (bg-surface), food item cards with borders (border-border), and basket summary box styling using the OKLCH color system."
+        },
+        {
+          "path": "frontend/src/pages/CartPage.tsx",
+          "operation": "modify",
+          "description": "Restore cart item card backgrounds (bg-surface) and borders (border-border). Ensure the cart summary/total box has visible background and border colors."
+        },
+        {
+          "path": "frontend/src/pages/OrdersPage.tsx",
+          "operation": "modify",
+          "description": "Restore order card backgrounds (bg-surface) and border colors (border-border) for the order list. Ensure status badges have visible background colors."
+        },
+        {
+          "path": "frontend/src/pages/OrderDetailsPage.tsx",
+          "operation": "modify",
+          "description": "Restore order detail sections with visible background colors (bg-surface) and borders (border-border) for order items container, payment status box, and tracking timeline."
+        },
+        {
+          "path": "frontend/src/components/orders/OrderTrackingTimeline.tsx",
+          "operation": "modify",
+          "description": "Restore tracking entry card backgrounds and status badge colors using the design system. Ensure timeline visual elements have visible colors."
+        },
+        {
+          "path": "frontend/src/pages/AdminPage.tsx",
+          "operation": "modify",
+          "description": "Restore admin page card containers, tab panels, and form sections with proper background colors (bg-surface) and borders (border-border). Ensure product management cards and Stripe configuration sections are visible."
+        },
+        {
+          "path": "frontend/src/components/admin/InitialAdminSetupForm.tsx",
+          "operation": "modify",
+          "description": "Restore form container background and input field borders using bg-surface and border-border classes from the OKLCH system."
+        },
+        {
+          "path": "frontend/src/components/auth/AdminLoginForm.tsx",
+          "operation": "modify",
+          "description": "Restore login form container and input field styling with visible backgrounds (bg-surface) and borders (border-border)."
+        },
+        {
+          "path": "frontend/src/pages/RegisterPage.tsx",
+          "operation": "modify",
+          "description": "Restore registration form container background (bg-surface) and input field borders (border-border) using the design system."
+        },
+        {
+          "path": "frontend/src/components/landing/ServiceArea.tsx",
+          "operation": "modify",
+          "description": "Restore service area card backgrounds and borders using bg-surface and border-border classes from the OKLCH color system."
+        },
+        {
+          "path": "frontend/src/components/landing/About.tsx",
+          "operation": "modify",
+          "description": "Restore feature card backgrounds and borders for the three key features section using the design system variables."
+        }
+      ]
+    },
+    {
+      "id": "REQ-3",
+      "summary": "Ensure the OKLCH color system variables are properly applied throughout all components",
+      "acceptanceCriteria": [
+        "All components correctly reference CSS custom properties",
+        "Both light and dark mode color variables are functional",
+        "No hardcoded color values override the design system"
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/tailwind.config.js",
+          "operation": "modify",
+          "description": "Verify that Tailwind config correctly maps CSS custom properties from index.css to Tailwind utility classes. Ensure the theme.colors section properly references --color-primary, --color-surface, --color-border, --color-accent, and other OKLCH variables for both light and dark modes."
+        },
+        {
+          "path": "frontend/src/index.css",
+          "operation": "modify",
+          "description": "Review OKLCH color variable definitions to ensure they are complete and properly scoped for :root and [data-theme='dark']. Verify that all necessary color tokens (primary, surface, border, accent, text, background, etc.) are defined. Do not modify the OKLCH color values themselves, only ensure the variable structure is correct."
+        },
+        {
+          "path": "frontend/src/components/landing/TopNav.tsx",
+          "operation": "modify",
+          "description": "Audit and restore navigation styling to use design system colors. Ensure navigation links, cart badge, and mobile menu have proper background colors and borders referencing CSS custom properties."
+        },
+        {
+          "path": "frontend/src/components/landing/Footer.tsx",
+          "operation": "modify",
+          "description": "Audit footer styling to ensure it uses design system colors for background (bg-surface or bg-primary-dark) and text colors. Remove any hardcoded color values that override the OKLCH system."
+        },
+        {
+          "path": "frontend/src/components/shop/CategoryFilter.tsx",
+          "operation": "modify",
+          "description": "Ensure category filter tabs use design system colors for active/inactive states. Apply bg-primary for active tabs and proper border colors using the OKLCH variables."
+        },
+        {
+          "path": "frontend/src/components/admin/AdminCredentialsRotation.tsx",
+          "operation": "modify",
+          "description": "Audit and ensure form inputs, buttons, and warning messages use consistent design system colors without hardcoded overrides."
+        },
+        {
+          "path": "frontend/src/pages/PaymentSuccessPage.tsx",
+          "operation": "modify",
+          "description": "Ensure success/failure status displays and action buttons use proper design system colors for backgrounds and borders."
+        },
+        {
+          "path": "frontend/src/pages/PaymentFailurePage.tsx",
+          "operation": "modify",
+          "description": "Ensure error message container and navigation buttons use design system colors (bg-surface, border-border, bg-primary) without hardcoded values."
         }
       ]
     }

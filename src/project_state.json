@@ -2,17 +2,15 @@
   "schemaVersion": "1.0.0",
   "projectStateVersion": 3,
   "summary": "New project",
-  "architectural_notes": [
-    "Admin credential configuration depends on access-control role map; resetting credentials without resetting roles can create a circular lockout state."
-  ],
+  "architectural_notes": [],
   "known_issues": [
-    "Admin credentials reset can leave no principal with admin role, causing a circular lockout where no user can configure new admin credentials; requires resetting both credentials and role map."
+    "Boxes and buttons are rendering without colors (blank appearance) - reported in version 29"
   ],
   "isFixRequest": true,
   "existing_features": [
     {
-      "id": "feature-update-the-frontend-initial-admin-setup-flow-to-use-the-new-backend-initial-setup-api-instead-of-the-current-workaround-that-throws-an-error-on-credentials-not-set-so-that-clicking-configure-admin-credentials-successfully-completes-setup-after-a-reset-and-stops-showing-the-circular-lockout-error-banner",
-      "title": "Update the frontend initial admin setup flow to use the new backend initial-setup API (instead of the current workaround that throws an error on \"Credentials not set\"), so that clicking \"Configure Admin Credentials\" successfully completes setup after a reset and stops showing the circular-lockout error banner.",
+      "id": "feature-ensure-the-oklch-color-system-variables-defined-in-frontend-index-css-are-properly-applied-throughout-all-components-verify-that-css-custom-properties-color-primary-color-surface-etc-are-correctly-referenced-in-component-styles",
+      "title": "Ensure the OKLCH color system variables defined in frontend/index.css are properly applied throughout all components. Verify that CSS custom properties (--color-primary, --color-surface, etc.) are correctly referenced in component styles.",
       "reqIds": [
         "REQ-3"
       ],
@@ -22,7 +20,7 @@
   "new_feature_requests": [
     {
       "id": "AR-1",
-      "summary": "Implement a backend canister upgrade migration that fully resets admin configuration by (1) setting stored admin credentials to null and (2) clearing/removing all AccessControl role assignments so that no principal retains the admin role after the reset.",
+      "summary": "Restore background colors and border colors to all button elements across the application. Buttons should render with visible colors matching the OKLCH color system defined in the index.css file.",
       "reqIds": [
         "REQ-1"
       ],
@@ -30,14 +28,14 @@
     },
     {
       "id": "AR-2",
-      "summary": "Add a backend API that allows re-initializing admin access after a reset: when admin credentials are currently not configured, allow an authenticated Internet Identity caller to set new initial admin username/password and become the first admin. This must be rejected if admin credentials already exist.",
+      "summary": "Restore background colors and border colors to all card and box components (including product cards, diet plan cards, recommendation sections, and form containers). All boxes should render with visible styling matching the design system.",
       "reqIds": [
         "REQ-2"
       ],
       "status": "pending"
     }
   ],
-  "projectName": "Fix admin reset lockout by resetting role map and enabling initial admin setup after reset",
+  "projectName": "Fix missing colors on buttons and boxes",
   "clarification_mode": "instant",
   "clarification_rounds": 0
 }

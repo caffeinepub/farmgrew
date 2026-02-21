@@ -7,7 +7,7 @@ import CategoryFilter from '../components/shop/CategoryFilter';
 import ProductCard from '../components/shop/ProductCard';
 import { Loader2, RefreshCw, Package } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useNavigate } from '@tanstack/react-router';
+import { navigate } from '../router/navigation';
 
 const CATEGORIES = [
   { id: 'all', label: 'All Products' },
@@ -22,16 +22,15 @@ export default function ShopPage() {
   const { data: products, isLoading, error, refetch, isRefetching } = useProducts(
     selectedCategory === 'all' ? null : selectedCategory
   );
-  const navigate = useNavigate();
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col bg-background">
       <TopNav />
       <main className="flex-1 section-spacing-sm">
         <Container>
-          <div className="mb-8">
-            <h1 className="text-4xl md:text-5xl font-bold mb-4">Shop Fresh Products</h1>
-            <p className="text-lg text-muted-foreground">
+          <div className="mb-8 space-y-4">
+            <h1>Shop Fresh Products</h1>
+            <p className="text-lg text-muted-foreground max-w-3xl">
               Browse our selection of fresh cut vegetables, fruits, batter, and kitchen essentials
             </p>
           </div>
@@ -44,8 +43,8 @@ export default function ShopPage() {
 
           {isLoading && (
             <div className="flex items-center justify-center py-20">
-              <div className="text-center">
-                <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto mb-4" />
+              <div className="text-center space-y-4">
+                <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto" />
                 <p className="text-muted-foreground">Loading products...</p>
               </div>
             </div>
@@ -53,43 +52,45 @@ export default function ShopPage() {
 
           {error && (
             <div className="text-center py-20">
-              <p className="text-destructive">Failed to load products. Please try again.</p>
+              <p className="text-destructive text-lg">Failed to load products. Please try again.</p>
             </div>
           )}
 
           {!isLoading && !error && products && products.length === 0 && (
             <div className="text-center py-20">
-              <div className="max-w-md mx-auto">
-                <Package className="h-16 w-16 text-muted-foreground mx-auto mb-6" />
-                <h2 className="text-2xl font-semibold mb-3">No Products Available</h2>
-                <p className="text-muted-foreground text-lg mb-2">
+              <div className="max-w-md mx-auto space-y-6">
+                <Package className="h-20 w-20 text-muted-foreground mx-auto" />
+                <h2>No Products Available</h2>
+                <p className="text-muted-foreground text-lg">
                   There are currently no products in the catalog.
                 </p>
-                <p className="text-muted-foreground mb-6">
+                <p className="text-muted-foreground">
                   If you're an admin, please visit the Admin Dashboard to add products.
                 </p>
-                <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                <div className="flex flex-col sm:flex-row gap-4 justify-center">
                   <Button
                     onClick={() => refetch()}
                     disabled={isRefetching}
                     variant="outline"
+                    size="lg"
                     className="gap-2"
                   >
                     {isRefetching ? (
                       <>
-                        <Loader2 className="h-4 w-4 animate-spin" />
+                        <Loader2 className="h-5 w-5 animate-spin" />
                         Refreshing...
                       </>
                     ) : (
                       <>
-                        <RefreshCw className="h-4 w-4" />
+                        <RefreshCw className="h-5 w-5" />
                         Refresh Products
                       </>
                     )}
                   </Button>
                   <Button
-                    onClick={() => navigate({ to: '/admin' })}
-                    className="gap-2"
+                    onClick={() => navigate('/admin')}
+                    size="lg"
+                    className="gap-2 bg-primary hover:bg-primary/90"
                   >
                     Go to Admin Dashboard
                   </Button>

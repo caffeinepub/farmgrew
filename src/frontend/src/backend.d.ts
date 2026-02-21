@@ -24,6 +24,7 @@ export interface Order {
     id: bigint;
     status: OrderStatus;
     paymentStatus: PaymentStatus;
+    paymentMethod: PaymentMethod;
     customer: Principal;
     tracking: Array<OrderTrackingEntry>;
     totalPriceCents: bigint;
@@ -112,6 +113,10 @@ export enum OrderStatus {
     completed = "completed",
     confirmed = "confirmed"
 }
+export enum PaymentMethod {
+    stripe = "stripe",
+    cashOnDelivery = "cashOnDelivery"
+}
 export enum UserRole {
     admin = "admin",
     user = "user",
@@ -147,7 +152,8 @@ export interface backendInterface {
     isStripeConfigured(): Promise<boolean>;
     listAllProducts(): Promise<Array<Product>>;
     listProducts(category: string | null): Promise<Array<Product>>;
-    placeOrder(pickupTime: Time | null): Promise<bigint>;
+    markOrderAsPaidAdmin(orderId: bigint): Promise<void>;
+    placeOrder(paymentMethod: PaymentMethod, pickupTime: Time | null): Promise<bigint>;
     registerCustomer(name: string, phoneNumber: string, pickupAddress: string): Promise<void>;
     removeFromCart(productId: bigint): Promise<void>;
     revokeAdminRole(user: Principal): Promise<void>;

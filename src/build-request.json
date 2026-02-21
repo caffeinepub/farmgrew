@@ -1,77 +1,70 @@
 {
   "kind": "build_request",
-  "title": "Fix admin reset lockout by resetting role map and enabling initial admin setup after reset",
+  "title": "Fix missing colors on buttons and boxes",
   "priority": "high",
   "requirements": [
     {
       "id": "REQ-1",
-      "text": "Implement a backend canister upgrade migration that fully resets admin configuration by (1) setting stored admin credentials to null and (2) clearing/removing all AccessControl role assignments so that no principal retains the admin role after the reset.",
-      "target": "backend",
+      "text": "Restore background colors and border colors to all button elements across the application. Buttons should render with visible colors matching the OKLCH color system defined in the index.css file.",
+      "target": "frontend",
       "source": {
         "messageIds": [
-          "msg-1"
+          "msg-user-latest"
         ],
         "quotes": [
-          "Do you want me to fully reset both admin credentials and the entire role map so your next II login becomes the new admin?",
-          "Yes"
+          "All the boxes and buttons are blank without colours"
         ]
       },
       "acceptanceCriteria": [
-        "After deploying an upgrade that includes the migration, calls that depend on stored admin credentials behave as if credentials are not configured (e.g., authenticateAdmin traps with \"Credentials not set\").",
-        "After deploying an upgrade that includes the migration, no principal is considered an admin until a new initial admin is established.",
-        "The migration does not delete or modify unrelated state (products, carts, orders, customers, Stripe config, blob storage).",
-        "Migration behavior follows the project migration policy (only runs when upgrading existing state; does not break fresh installs)."
+        "All buttons display with appropriate background colors",
+        "Button hover states show visible color changes",
+        "Button text has sufficient contrast against backgrounds"
       ]
     },
     {
       "id": "REQ-2",
-      "text": "Add a backend API that allows re-initializing admin access after a reset: when admin credentials are currently not configured, allow an authenticated Internet Identity caller to set new initial admin username/password and become the first admin. This must be rejected if admin credentials already exist.",
-      "target": "backend",
+      "text": "Restore background colors and border colors to all card and box components (including product cards, diet plan cards, recommendation sections, and form containers). All boxes should render with visible styling matching the design system.",
+      "target": "frontend",
       "source": {
         "messageIds": [
-          "msg-2",
-          "msg-3"
+          "msg-user-latest"
         ],
         "quotes": [
-          "Admin credentials reset can leave no principal with admin role, causing a circular lockout where no user can configure new admin credentials",
-          "You’re stuck in a circular state."
+          "All the boxes and buttons are blank without colours"
         ]
       },
       "acceptanceCriteria": [
-        "When admin credentials are null (fresh state or after reset), an authenticated caller can successfully set initial admin credentials and is granted the admin role in the same operation.",
-        "When admin credentials are already configured, the initial-setup API traps/rejects with a clear error indicating setup is not allowed because credentials already exist.",
-        "After successful initial setup, the caller can access existing admin-only APIs (e.g., updateAdminCredentials, grantAdminRole) without additional manual role assignment steps."
+        "Product cards display with visible borders and backgrounds",
+        "Diet plan selection cards show proper styling",
+        "Health goal selection buttons render with visible colors",
+        "Form containers and input boxes have visible borders"
       ]
     },
     {
       "id": "REQ-3",
-      "text": "Update the frontend initial admin setup flow to use the new backend initial-setup API (instead of the current workaround that throws an error on \"Credentials not set\"), so that clicking \"Configure Admin Credentials\" successfully completes setup after a reset and stops showing the circular-lockout error banner.",
+      "text": "Ensure the OKLCH color system variables defined in frontend/index.css are properly applied throughout all components. Verify that CSS custom properties (--color-primary, --color-surface, etc.) are correctly referenced in component styles.",
       "target": "frontend",
       "source": {
         "messageIds": [
-          "msg-4"
-        ],
-        "quotes": [
-          "This is the error I'm getting on trying to configure admin credentials",
-          "Yes red error pops up"
+          "msg-user-latest"
         ]
       },
       "acceptanceCriteria": [
-        "On the Initial Admin Setup screen, submitting valid username/password/confirm password calls the backend initial-setup API and succeeds when the backend is in the reset/fresh state.",
-        "After success, the UI shows the existing success state and a subsequent reload allows access to the admin dashboard for that same Internet Identity principal.",
-        "If credentials are already configured, the UI shows an actionable error (e.g., instructing the user to use the admin login form) and does not claim that reset requires contacting an administrator.",
-        "React Query caches related to admin state (e.g., isAdminConfigured, isAdmin) are invalidated/refetched appropriately after setup success."
+        "All components correctly reference CSS custom properties",
+        "Both light and dark mode color variables are functional",
+        "No hardcoded color values override the design system"
       ]
     }
   ],
   "constraints": [
-    "Backend must remain a single-actor Motoko architecture with logic in backend/main.mo.",
-    "Do not edit files under frontend/src/components/ui or other frontend immutablePaths; compose existing UI components instead.",
-    "Do not introduce external databases or third-party auth beyond Internet Identity."
+    "Do not modify the OKLCH color definitions in frontend/index.css",
+    "Maintain existing component structure and functionality",
+    "Preserve all existing hover and interaction states"
   ],
   "nonGoals": [
-    "Adding a fully automated canister redeploy/reset button from the frontend (dfx redeploy remains manual).",
-    "Changing unrelated e-commerce functionality (products, cart, orders, Stripe checkout)."
+    "Changing the color palette or design system",
+    "Redesigning component layouts",
+    "Adding new UI components"
   ],
   "imageRequirements": {
     "required": [],
